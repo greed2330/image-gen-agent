@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<!--
+  image-gen-agent UI mockup — v2
+  changes vs v1: animated aurora background, glassmorphism panels, accent glow,
+  hero empty-state, generation showpiece (progress ring + pipeline stages + reveal),
+  spring micro-interactions, staggered entrances. Disposable design prototype.
+-->
+<html lang="ko" data-theme="midnight">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>image-gen-agent — Mockup v2</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0b0d18; --glass:rgba(22,26,44,.62); --glass-2:rgba(30,36,64,.5); --hover:rgba(255,255,255,.05);
+  --text:#eef1ff; --text-dim:#8b93bf; --border:rgba(255,255,255,.08);
+  --accent:#6f8bff; --accent-2:#a98bff; --accent-3:#5fe0c8; --accent-soft:rgba(111,139,255,.16);
+  --glow:rgba(111,139,255,.55); --bubble-ai:rgba(255,255,255,.06);
+  --danger:#ff5d7a; --ok:#3fd08a; --shadow:rgba(0,0,8,.55);
+  --b1:#6f8bff; --b2:#a98bff; --b3:#5fe0c8;
+}
+[data-theme="light"]{
+  --bg:#eef0f7; --glass:rgba(255,255,255,.7); --glass-2:rgba(255,255,255,.55); --hover:rgba(20,24,60,.04);
+  --text:#161a2e; --text-dim:#6b7299; --border:rgba(20,24,60,.09);
+  --accent:#5b5be6; --accent-2:#8a6cff; --accent-3:#16b88a; --accent-soft:rgba(91,91,230,.12);
+  --glow:rgba(91,91,230,.35); --bubble-ai:rgba(20,24,60,.05);
+  --danger:#e0454d; --ok:#1f9d5a; --shadow:rgba(40,40,90,.14);
+  --b1:#8a8cff; --b2:#c0a0ff; --b3:#7fe8d0;
+}
+[data-theme="mint"]{
+  --bg:#e6f4ee; --glass:rgba(255,255,255,.66); --glass-2:rgba(255,255,255,.5); --hover:rgba(16,60,45,.04);
+  --text:#0f241d; --text-dim:#5a7a6f; --border:rgba(16,60,45,.1);
+  --accent:#10b886; --accent-2:#3ad6b0; --accent-3:#46c2ff; --accent-soft:rgba(16,184,134,.14);
+  --glow:rgba(16,184,134,.4); --bubble-ai:rgba(16,60,45,.05);
+  --danger:#e0655c; --ok:#11a06f; --shadow:rgba(16,80,60,.14);
+  --b1:#3ad6b0; --b2:#8ee9c8; --b3:#7fd0ff;
+}
+[data-theme="rose"]{
+  --bg:#fbeef1; --glass:rgba(255,255,255,.66); --glass-2:rgba(255,255,255,.5); --hover:rgba(80,20,40,.04);
+  --text:#2a1419; --text-dim:#8a6670; --border:rgba(80,20,40,.1);
+  --accent:#e85d86; --accent-2:#ff8fb0; --accent-3:#ffab6f; --accent-soft:rgba(232,93,134,.14);
+  --glow:rgba(232,93,134,.4); --bubble-ai:rgba(80,20,40,.05);
+  --danger:#d6454d; --ok:#1f9d5a; --shadow:rgba(120,40,60,.14);
+  --b1:#ff8fb0; --b2:#ffc0d2; --b3:#ffcf9f;
+}
+[data-theme="midnight"]{ /* default = midnight */ }
+html,body{height:100%}
+body{font-family:'Pretendard','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);
+  overflow:hidden;transition:background .5s,color .4s;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+.app{display:flex;height:100vh;position:relative;z-index:1}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-dim)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ===== aurora background ===== */
+.aurora{position:fixed;inset:0;z-index:0;overflow:hidden;background:
+  radial-gradient(120% 120% at 50% 0%,transparent,var(--bg) 75%)}
+.blob{position:absolute;border-radius:50%;filter:blur(85px);opacity:.5;will-change:transform}
+.blob.b1{width:48vw;height:48vw;background:var(--b1);top:-14vw;left:-10vw;animation:fl1 20s ease-in-out infinite}
+.blob.b2{width:42vw;height:42vw;background:var(--b2);bottom:-16vw;right:-8vw;animation:fl2 25s ease-in-out infinite}
+.blob.b3{width:36vw;height:36vw;background:var(--b3);top:34vh;left:42vw;animation:fl3 30s ease-in-out infinite;opacity:.32}
+@keyframes fl1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(8vw,6vh) scale(1.15)}}
+@keyframes fl2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-7vw,-5vh) scale(1.1)}}
+@keyframes fl3{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(-6vw,4vh) scale(1.2)}66%{transform:translate(5vw,-4vh) scale(.9)}}
+.grain{position:absolute;inset:0;opacity:.04;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+/* ===== sidebar (glass) ===== */
+.sidebar{width:268px;flex-shrink:0;display:flex;flex-direction:column;
+  background:var(--glass);backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);
+  border-right:1px solid var(--border)}
+.brand{padding:20px 18px 16px;display:flex;align-items:center;gap:11px}
+.brand .logo{width:36px;height:36px;border-radius:11px;display:grid;place-items:center;color:#fff;
+  font-weight:800;font-size:16px;background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  box-shadow:0 0 0 1px var(--border),0 6px 18px var(--glow);position:relative;overflow:hidden}
+.brand .logo::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.5) 50%,transparent 60%);
+  animation:sheen 4s ease-in-out infinite}
+@keyframes sheen{0%,70%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.brand b{font-size:15.5px;letter-spacing:-.3px;display:block}
+.brand span{font-size:10.5px;color:var(--text-dim);letter-spacing:.3px;text-transform:uppercase;margin-top:1px;display:block}
+.new-chat{margin:6px 16px 14px;padding:12px;border-radius:13px;color:#fff;font-weight:600;font-size:13.5px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 6px 20px var(--glow);
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1),box-shadow .25s,filter .2s}
+.new-chat:hover{transform:translateY(-2px);box-shadow:0 10px 28px var(--glow);filter:brightness(1.05)}
+.new-chat:active{transform:translateY(0) scale(.97)}
+.rooms{flex:1;overflow-y:auto;padding:2px 10px}
+.rooms-label{font-size:10px;text-transform:uppercase;letter-spacing:.9px;color:var(--text-dim);
+  padding:10px 8px 7px;font-weight:700}
+.room{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:11px;margin-bottom:3px;
+  font-size:13px;color:var(--text-dim);position:relative;overflow:hidden;
+  transition:background .2s,color .2s,transform .2s;animation:slideIn .4s ease backwards}
+@keyframes slideIn{from{opacity:0;transform:translateX(-12px)}to{opacity:1;transform:none}}
+.room::before{content:"";position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:0;
+  border-radius:3px;background:var(--accent);transition:height .25s}
+.room:hover{background:var(--hover);color:var(--text)}
+.room.active{background:var(--accent-soft);color:var(--text);font-weight:600}
+.room.active::before{height:60%}
+.room .ricon{width:24px;height:24px;border-radius:7px;flex-shrink:0;display:grid;place-items:center;font-size:12px;
+  background:linear-gradient(135deg,var(--accent-soft),transparent);border:1px solid var(--border)}
+.room .rname{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .del{opacity:0;width:24px;height:24px;border-radius:7px;display:grid;place-items:center;font-size:13px;
+  color:var(--text-dim);transition:opacity .2s,background .2s,color .2s,transform .2s}
+.room:hover .del{opacity:1}
+.room .del:hover{background:var(--danger);color:#fff;transform:scale(1.1)}
+.side-foot{padding:10px;border-top:1px solid var(--border);display:flex;gap:6px}
+.nav-btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:11px;
+  font-size:12.5px;color:var(--text-dim);transition:background .2s,color .2s}
+.nav-btn:hover{background:var(--hover);color:var(--text)}
+.nav-btn.active{background:var(--accent-soft);color:var(--text);font-weight:600}
+
+/* ===== toast ===== */
+.toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(24px) scale(.95);
+  background:var(--glass);backdrop-filter:blur(20px);border:1px solid var(--border);
+  color:var(--text);padding:12px 22px;border-radius:13px;font-size:13px;font-weight:500;z-index:80;
+  opacity:0;transition:all .4s cubic-bezier(.34,1.56,.64,1);pointer-events:none;box-shadow:0 12px 36px var(--shadow)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}
+
+/* ===== main ===== */
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:60px;flex-shrink:0;display:flex;align-items:center;gap:13px;padding:0 24px;
+  border-bottom:1px solid var(--border);background:var(--glass-2);backdrop-filter:blur(20px)}
+.topbar h2{font-size:15.5px;font-weight:650;flex:1;letter-spacing:-.3px}
+.pill{font-size:11px;padding:5px 12px;border-radius:20px;font-weight:600;color:var(--accent);
+  background:var(--accent-soft);border:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.screen{flex:1;overflow-y:auto;display:none}
+.screen.active{display:block}
+
+/* hero empty-state */
+.hero{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px;gap:6px}
+.hero .orb{width:96px;height:96px;border-radius:50%;margin-bottom:10px;position:relative;
+  background:conic-gradient(from 0deg,var(--accent),var(--accent-2),var(--accent-3),var(--accent));
+  animation:spin 8s linear infinite;filter:blur(.5px);box-shadow:0 0 50px var(--glow)}
+.hero .orb::after{content:"화";position:absolute;inset:6px;border-radius:50%;background:var(--bg);
+  display:grid;place-items:center;font-size:34px;font-weight:800;
+  background-clip:text;-webkit-background-clip:text;color:var(--text);
+  box-shadow:inset 0 0 0 1px var(--border)}
+@keyframes spin{to{transform:rotate(360deg)}}
+.hero h1{font-size:26px;font-weight:750;letter-spacing:-.6px;
+  background:linear-gradient(120deg,var(--text),var(--accent-2));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:14px;color:var(--text-dim);max-width:380px;line-height:1.6;margin-top:4px}
+.hero .examples{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:22px;max-width:520px}
+.ex-card{padding:14px 16px;border-radius:14px;background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(12px);text-align:left;width:158px;transition:transform .25s cubic-bezier(.34,1.56,.64,1),border .2s;
+  animation:rise .5s ease backwards}
+.ex-card:hover{transform:translateY(-4px);border-color:var(--accent)}
+.ex-card .ei{font-size:20px;margin-bottom:7px}
+.ex-card b{font-size:13px;display:block;margin-bottom:3px}
+.ex-card small{font-size:11.5px;color:var(--text-dim);line-height:1.45}
+
+/* ===== chat ===== */
+.chat-wrap{max-width:780px;margin:0 auto;padding:28px 24px 14px}
+.msg{display:flex;gap:12px;margin-bottom:22px;animation:rise .45s cubic-bezier(.2,.8,.2,1)}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+.msg .av{width:34px;height:34px;border-radius:10px;flex-shrink:0;display:grid;place-items:center;
+  font-size:13px;font-weight:700;color:#fff}
+.msg.ai .av{background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 4px 14px var(--glow)}
+.msg.user{flex-direction:row-reverse}
+.msg.user .av{background:var(--glass-2);color:var(--text-dim);border:1px solid var(--border)}
+.bubble{max-width:80%;padding:13px 16px;border-radius:16px;font-size:14px;line-height:1.65}
+.msg.ai .bubble{background:var(--bubble-ai);border:1px solid var(--border);border-top-left-radius:5px;backdrop-filter:blur(8px)}
+.msg.user .bubble{color:#fff;border-top-right-radius:5px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 6px 20px var(--glow)}
+.bubble code{background:var(--hover);padding:2px 7px;border-radius:6px;font-size:12.5px;
+  font-family:'SF Mono',Consolas,monospace;border:1px solid var(--border)}
+.typing{display:flex;gap:5px;padding:4px 2px}
+.typing span{width:8px;height:8px;border-radius:50%;background:var(--accent);animation:blink 1.2s infinite}
+.typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,60%,100%{opacity:.25;transform:scale(.8)}30%{opacity:1;transform:scale(1)}}
+
+/* ===== generation showpiece ===== */
+.gen{margin-top:12px;width:330px;max-width:100%;border-radius:18px;overflow:hidden;
+  background:var(--glass);border:1px solid var(--border);backdrop-filter:blur(12px);box-shadow:0 10px 30px var(--shadow)}
+.gen .stage{aspect-ratio:832/1216;position:relative;display:grid;place-items:center;
+  background:radial-gradient(circle at 50% 40%,var(--accent-soft),transparent 70%)}
+.ring{transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:6;stroke-linecap:round}
+.ring .track{stroke:var(--border)}
+.ring .bar{stroke:url(#grad);transition:stroke-dashoffset .4s ease}
+.gen .pct{position:absolute;top:38%;left:0;right:0;text-align:center;font-size:22px;font-weight:750;letter-spacing:-.5px}
+.gen .stext{position:absolute;top:54%;left:0;right:0;text-align:center;font-size:11.5px;color:var(--text-dim);
+  padding:0 30px;line-height:1.5;min-height:32px}
+.gen .pipe{position:absolute;bottom:18px;left:0;right:0;display:flex;justify-content:center;gap:7px}
+.gen .pipe i{width:7px;height:7px;border-radius:50%;background:var(--border);transition:background .3s,transform .3s}
+.gen .pipe i.on{background:var(--accent);transform:scale(1.3);box-shadow:0 0 10px var(--glow)}
+.gen .pipe i.done{background:var(--ok)}
+.gen .reveal{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transform:scale(1.05);
+  transition:opacity .7s,transform .7s;
+  background:linear-gradient(150deg,var(--accent-soft),var(--accent-3) 140%)}
+.gen.done .reveal{opacity:1;transform:none}
+.gen .reveal .glyph{font-size:42px;opacity:.85;text-shadow:0 4px 20px var(--shadow)}
+.gen .bar2{display:flex;align-items:center;gap:7px;padding:11px 13px}
+.gen .tag{font-size:11px;padding:4px 9px;border-radius:7px;background:var(--hover);border:1px solid var(--border);color:var(--text-dim)}
+.gen .sp{flex:1}
+.gen .icbtn{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:13px;color:var(--text-dim);
+  transition:background .2s,color .2s,transform .2s}
+.gen .icbtn:hover{background:var(--hover);color:var(--accent);transform:scale(1.12)}
+
+/* ===== composer ===== */
+.composer{flex-shrink:0;padding:14px 24px 20px;background:var(--glass-2);backdrop-filter:blur(20px);border-top:1px solid var(--border)}
+.composer-inner{max-width:780px;margin:0 auto;display:flex;align-items:flex-end;gap:9px;padding:8px 8px 8px 15px;
+  border-radius:18px;background:var(--glass);border:1px solid var(--border);
+  transition:border .25s,box-shadow .25s}
+.composer-inner:focus-within{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.composer textarea{flex:1;background:none;border:none;outline:none;color:var(--text);font-size:14px;
+  resize:none;max-height:130px;line-height:1.5;padding:8px 0}
+.composer textarea::placeholder{color:var(--text-dim)}
+.iconbtn{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:18px;color:var(--text-dim);
+  transition:background .2s,color .2s,transform .2s}
+.iconbtn:hover{background:var(--hover);color:var(--text)}
+.send{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;font-size:16px;color:#fff;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 5px 16px var(--glow);
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1),filter .2s}
+.send:hover{filter:brightness(1.08);transform:scale(1.06)}.send:active{transform:scale(.9)}
+.quick{max-width:780px;margin:11px auto 0;display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:12px;padding:7px 13px;border-radius:20px;color:var(--text-dim);
+  background:var(--glass);border:1px solid var(--border);transition:all .2s}
+.chip:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+
+/* ===== settings ===== */
+.set-wrap{max-width:740px;margin:0 auto;padding:32px 24px 60px}
+.set-wrap h3{font-size:12px;text-transform:uppercase;letter-spacing:.8px;color:var(--text-dim);margin:28px 0 12px;font-weight:700}
+.set-wrap h3:first-child{margin-top:0}
+.card{background:var(--glass);border:1px solid var(--border);border-radius:16px;padding:4px 20px;backdrop-filter:blur(12px);
+  box-shadow:0 6px 20px var(--shadow)}
+.row{display:flex;align-items:center;gap:14px;padding:16px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:none}
+.row .info{flex:1}.row .info b{font-size:14px;font-weight:600;display:block}
+.row .info small{font-size:12px;color:var(--text-dim);display:block;margin-top:2px}
+.themes{display:flex;gap:13px;flex-wrap:wrap;padding:18px 0}
+.swatch{width:92px;border-radius:14px;overflow:hidden;border:2px solid var(--border);background:none;
+  transition:transform .25s cubic-bezier(.34,1.56,.64,1),border .2s,box-shadow .2s}
+.swatch:hover{transform:translateY(-4px);box-shadow:0 10px 24px var(--shadow)}
+.swatch.sel{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.swatch .prev{height:58px;position:relative}
+.swatch .prev .g1{position:absolute;width:36px;height:36px;border-radius:50%;filter:blur(8px);top:-4px;left:-4px}
+.swatch .prev .g2{position:absolute;width:30px;height:30px;border-radius:50%;filter:blur(8px);bottom:-4px;right:0}
+.swatch .lbl{font-size:11.5px;padding:8px 0;font-weight:600;text-align:center}
+.toggle{width:46px;height:26px;border-radius:14px;background:var(--hover);border:1px solid var(--border);position:relative;
+  flex-shrink:0;transition:background .25s}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:var(--text-dim);
+  transition:transform .3s cubic-bezier(.34,1.56,.64,1),background .25s}
+.toggle.on{background:var(--accent);border-color:transparent}
+.toggle.on::after{transform:translateX(20px);background:#fff}
+.select{background:var(--glass-2);border:1px solid var(--border);color:var(--text);padding:9px 13px;border-radius:10px;
+  font-size:13px;font-family:inherit;cursor:pointer}
+input[type=range]{accent-color:var(--accent);width:170px}
+
+/* ===== modal ===== */
+.overlay{position:fixed;inset:0;background:rgba(5,6,15,.55);display:none;place-items:center;z-index:90;
+  backdrop-filter:blur(6px)}
+.overlay.show{display:grid;animation:fade .25s}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{width:460px;max-width:92vw;padding:28px;border-radius:22px;background:var(--glass);border:1px solid var(--border);
+  backdrop-filter:blur(30px) saturate(160%);box-shadow:0 30px 80px var(--shadow);animation:pop .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes pop{from{transform:scale(.9) translateY(10px);opacity:0}to{transform:none;opacity:1}}
+.modal h3{font-size:19px;margin-bottom:5px;letter-spacing:-.3px}
+.modal>p{font-size:13px;color:var(--text-dim);margin-bottom:18px}
+.chk{display:flex;align-items:center;gap:12px;padding:13px;border-radius:12px;font-size:14px;user-select:none;
+  transition:background .2s}
+.chk:hover{background:var(--hover)}
+.chk.all{background:var(--accent-soft);font-weight:650;margin-bottom:6px}
+.chk.sub{margin-left:12px;font-size:13px;color:var(--text-dim)}
+.chk .box{width:22px;height:22px;border-radius:7px;border:2px solid var(--border);flex-shrink:0;display:grid;place-items:center;
+  color:#fff;font-size:13px;transition:all .25s cubic-bezier(.34,1.56,.64,1);transform:scale(1)}
+.chk.checked .box{background:var(--accent);border-color:var(--accent);box-shadow:0 0 12px var(--glow)}
+.chk .box svg{opacity:0;transform:scale(.4);transition:all .25s}
+.chk.checked .box svg{opacity:1;transform:scale(1)}
+.chk .req{font-size:11px;color:var(--accent);margin-left:auto;font-weight:600}
+.hr{height:1px;background:var(--border);margin:6px 0}
+.modal-actions{display:flex;gap:10px;margin-top:22px}
+.btn{flex:1;padding:13px;border-radius:13px;font-size:14px;font-weight:600;transition:transform .2s,filter .2s,opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn.primary{color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 6px 20px var(--glow)}
+.btn.primary:disabled{opacity:.35;cursor:not-allowed;box-shadow:none}
+.btn.ghost{background:var(--hover);color:var(--text)}
+</style>
+</head>
+<body>
+<div class="aurora"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span><span class="grain"></span></div>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="logo">화</div>
+      <div><b>화가 에이전트</b><span>local image-gen AI</span></div></div>
+    <button class="new-chat" onclick="addRoom()">＋ 새 채팅방</button>
+    <div class="rooms"><div class="rooms-label">채팅방</div><div id="roomList"></div></div>
+    <div class="side-foot">
+      <button class="nav-btn" id="navChat" onclick="showScreen('chat')">💬 채팅</button>
+      <button class="nav-btn" id="navSet" onclick="showScreen('set')">⚙️ 설정</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <h2 id="topTitle">새 작업</h2>
+      <span class="pill" id="topPill"><span class="dot"></span> SDXL · illustrious</span>
+    </div>
+
+    <section class="screen active" id="screen-chat">
+      <div class="chat-wrap" id="chatWrap"></div>
+    </section>
+
+    <section class="screen" id="screen-set">
+      <div class="set-wrap">
+        <h3>테마 — 마음에 드는 색을 골라보세요</h3>
+        <div class="card"><div class="themes" id="themes"></div></div>
+        <h3>생성 기본값</h3>
+        <div class="card">
+          <div class="row"><div class="info"><b>기본 체크포인트</b><small>새 채팅방의 시작 모델</small></div>
+            <select class="select"><option>WAI-illustrious</option><option>NoobAI-XL</option><option>Chroma (NSFW)</option></select></div>
+          <div class="row"><div class="info"><b>화면비</b><small>portrait / landscape / square</small></div>
+            <select class="select"><option>세로 832×1216</option><option>가로 1216×832</option><option>정사각 1024</option></select></div>
+          <div class="row"><div class="info"><b>Steps</b><small><span id="stepVal">28</span> steps</small></div>
+            <input type="range" min="12" max="50" value="28" oninput="stepVal.textContent=this.value"></div>
+        </div>
+        <h3>두뇌 / 동작</h3>
+        <div class="card">
+          <div class="row"><div class="info"><b>자기평가 Critic 루프</b><small>생성 후 자동 품질검사·재생성 (Phase 3)</small></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+          <div class="row"><div class="info"><b>NSFW 허용</b><small>로컬 무검열 — 개인용</small></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+          <div class="row"><div class="info"><b>클라우드 하이브리드</b><small>복잡한 의도는 클라우드 LLM 보조</small></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        </div>
+        <h3>약관 / 동의</h3>
+        <div class="card"><div class="row"><div class="info"><b>이용 약관</b><small>전체/부분 동의 체크박스 데모</small></div>
+          <button class="btn ghost" style="flex:0 0 auto;padding:10px 18px" onclick="openModal()">약관 보기</button></div></div>
+      </div>
+    </section>
+
+    <div class="composer" id="composer">
+      <div class="composer-inner">
+        <button class="iconbtn" onclick="toast('이미지 첨부 (목업)')">📎</button>
+        <textarea id="ta" rows="1" placeholder="만들고 싶은 그림을 한국어로 설명해 주세요…"></textarea>
+        <button class="send" onclick="send()">➤</button>
+      </div>
+      <div class="quick">
+        <button class="chip" onclick="send('분홍 머리 트윈테일 소녀가 창가에서 웃으며')">✨ 예시 프롬프트</button>
+        <button class="chip" onclick="send('더 부드러운 셀화풍으로')">🎨 스타일 조정</button>
+        <button class="chip" onclick="send('몽환적인 분위기로')">🌙 분위기 변경</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>약관 동의</h3>
+    <p>전체동의 ↔ 필수/선택 항목이 서로 연동됩니다. 필수를 모두 체크해야 시작할 수 있어요.</p>
+    <label class="chk all" id="chkAll" onclick="toggleAll()"><span class="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 전체 동의 (선택 포함)</label>
+    <div class="hr"></div>
+    <label class="chk sub" data-req="1" onclick="toggleOne(this)"><span class="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 서비스 이용약관 <span class="req">필수</span></label>
+    <label class="chk sub" data-req="1" onclick="toggleOne(this)"><span class="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 개인정보 처리방침 <span class="req">필수</span></label>
+    <label class="chk sub" data-req="1" onclick="toggleOne(this)"><span class="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> NSFW 콘텐츠 생성 동의 <span class="req">필수</span></label>
+    <label class="chk sub" data-req="0" onclick="toggleOne(this)"><span class="box"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 생성 결과 로컬 저장 (선택)</label>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal()">취소</button>
+      <button class="btn primary" id="agreeBtn" disabled onclick="agree()">동의하고 시작</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+/* ---------- state ---------- */
+let rooms=[], active=null, rid=0, genId=0;
+const CK=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+
+/* ---------- rooms ---------- */
+function addRoom(name){
+  const id=++rid;
+  rooms.push({id,name:name||`작업 ${id}`,msgs:[{who:'ai',hero:true}],model:'SDXL · illustrious'});
+  active=id; renderRooms(); renderChat(); showScreen('chat');
+}
+function delRoom(id,e){
+  e.stopPropagation();
+  rooms=rooms.filter(r=>r.id!==id);
+  active = active===id ? (rooms.length?rooms[rooms.length-1].id:null) : active;
+  if(!rooms.length) addRoom('새 작업'); else {renderRooms();renderChat();}
+  toast('채팅방 삭제됨');
+}
+function pickRoom(id){active=id;renderRooms();renderChat();showScreen('chat');}
+function room(){return rooms.find(r=>r.id===active);}
+function renderRooms(){
+  roomList.innerHTML=rooms.map((r,i)=>`
+    <div class="room ${r.id===active?'active':''}" style="animation-delay:${i*.04}s" onclick="pickRoom(${r.id})">
+      <span class="ricon">🎨</span><span class="rname">${r.name}</span>
+      <button class="del" onclick="delRoom(${r.id},event)">🗑</button>
+    </div>`).join('');
+}
+
+/* ---------- chat render ---------- */
+function renderChat(){
+  const r=room(); if(!r)return;
+  topTitle.textContent=r.name;
+  topPill.innerHTML=`<span class="dot"></span> ${r.model}`;
+  chatWrap.innerHTML=r.msgs.map(msgHTML).join('');
+  const sc=chatWrap.parentElement; sc.scrollTop=sc.scrollHeight;
+}
+function heroHTML(){return `<div class="hero">
+  <div class="orb"></div>
+  <h1>무엇을 그려볼까요?</h1>
+  <p>한국어로 편하게 설명하거나 레퍼런스 이미지를 올려주세요. 두뇌가 의도를 해석하고 프롬프트를 합성해 그려냅니다.</p>
+  <div class="examples">
+    <div class="ex-card" style="animation-delay:.05s" onclick="send('분홍 머리 트윈테일 소녀가 창가에서 웃으며')"><div class="ei">✨</div><b>캐릭터</b><small>분홍 머리 트윈테일 소녀가 창가에서</small></div>
+    <div class="ex-card" style="animation-delay:.12s" onclick="send('노을 지는 판타지 도시 풍경, 와이드샷')"><div class="ei">🏙️</div><b>풍경</b><small>노을 지는 판타지 도시, 와이드샷</small></div>
+    <div class="ex-card" style="animation-delay:.19s" onclick="send('몽환적인 수채화풍 인물')"><div class="ei">🎨</div><b>스타일</b><small>몽환적인 수채화풍으로</small></div>
+  </div></div>`;}
+function msgHTML(m){
+  if(m.hero) return heroHTML();
+  if(m.who==='user')
+    return `<div class="msg user"><div class="av">나</div><div class="bubble">${m.text}</div></div>`;
+  const body = m.typing
+    ? `<div class="typing"><span></span><span></span><span></span></div>`
+    : `${m.text||''}${m.gen?genHTML(m):''}`;
+  return `<div class="msg ai"><div class="av">화</div><div class="bubble">${body}</div></div>`;
+}
+
+/* ---------- generation showpiece ---------- */
+const CIRC=339.29; // 2*pi*54
+function genHTML(m){
+  return `<div class="gen" id="gen-${m.gid}">
+    <div class="stage">
+      <svg class="ring" width="140" height="140">
+        <defs><linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/></linearGradient></defs>
+        <circle class="track" cx="70" cy="70" r="54"/>
+        <circle class="bar" cx="70" cy="70" r="54" stroke-dasharray="${CIRC}" stroke-dashoffset="${CIRC}"/>
+      </svg>
+      <div class="pct">0%</div>
+      <div class="stext">대기 중…</div>
+      <div class="pipe"><i></i><i></i><i></i><i></i></div>
+      <div class="reveal"><div class="glyph">🌸</div></div>
+    </div>
+    <div class="bar2"><span class="tag">832×1216</span><span class="tag">28 steps</span><span class="tag">cfg 5.0</span>
+      <span class="sp"></span><span class="icbtn">♡</span><span class="icbtn">⤓</span><span class="icbtn">⟳</span></div>
+  </div>`;
+}
+const STAGES=[
+  {p:8, t:'① LLM 언로드 — VRAM 반납 중'},
+  {p:20,t:'② ComfyUI 그래프 제출'},
+  {p:38,t:'③ 체크포인트 로드 (SDXL)'},
+  {p:55,t:'샘플링 12 / 28'},
+  {p:78,t:'샘플링 24 / 28'},
+  {p:92,t:'④ VAE 디코딩'},
+  {p:100,t:'완료 ✓'},
+];
+function runGen(gid){
+  const el=document.getElementById('gen-'+gid); if(!el)return;
+  const bar=el.querySelector('.bar'), pct=el.querySelector('.pct'),
+        st=el.querySelector('.stext'), dots=el.querySelectorAll('.pipe i');
+  let i=0;
+  const tick=()=>{
+    if(i>=STAGES.length){el.classList.add('done');st.textContent='';return;}
+    const s=STAGES[i];
+    bar.style.strokeDashoffset=CIRC*(1-s.p/100);
+    pct.textContent=s.p+'%'; st.textContent=s.t;
+    const di=Math.min(3,Math.floor(i/2));
+    dots.forEach((d,k)=>{d.classList.toggle('on',k===di);d.classList.toggle('done',k<di);});
+    i++; setTimeout(tick, i===1?500:700);
+  };
+  setTimeout(tick,300);
+}
+
+/* ---------- send simulation ---------- */
+const REPLIES=[
+  '좋아요! 의도를 해석했어요 → <code>1girl, pink hair, twintails, smile, window</code><br>씨앗 태그를 TIPO로 합성하고 생성을 시작합니다.',
+  '스타일을 반영했어요. soft cel-shading 프리셋 + cfg를 살짝 낮춰 다시 그릴게요.',
+  '분위기를 조정했어요. dreamy / soft lighting 태그를 더해 재생성합니다.',
+];
+let turn=0;
+function send(text){
+  const r=room(); if(!r)return;
+  text=(text||ta.value).trim(); if(!text)return;
+  if(r.msgs.length===1&&r.msgs[0].hero) r.msgs=[];
+  ta.value=''; ta.style.height='auto';
+  r.msgs.push({who:'user',text});
+  r.msgs.push({who:'ai',typing:true});
+  renderChat();
+  setTimeout(()=>{
+    r.msgs.pop();
+    const gid=++genId;
+    r.msgs.push({who:'ai',text:REPLIES[turn%REPLIES.length],gen:true,gid});
+    turn++; renderChat(); runGen(gid);
+  },800);
+}
+
+/* ---------- screens ---------- */
+function showScreen(s){
+  document.getElementById('screen-chat').classList.toggle('active',s==='chat');
+  document.getElementById('screen-set').classList.toggle('active',s==='set');
+  navChat.classList.toggle('active',s==='chat');
+  navSet.classList.toggle('active',s==='set');
+  topTitle.textContent = s==='set'?'설정':(room()?room().name:'');
+  topPill.style.display = s==='set'?'none':'';
+  composer.style.display = s==='set'?'none':'';
+}
+
+/* ---------- themes ---------- */
+const THEMES=[
+  {id:'midnight',name:'미드나잇',bg:'#0e1020',g:['#6f8bff','#a98bff']},
+  {id:'dark',name:'다크',bg:'#16182a',g:['#7c6cf0','#5fe0c8']},
+  {id:'light',name:'라이트',bg:'#eef0f7',g:['#5b5be6','#8a6cff']},
+  {id:'mint',name:'민트',bg:'#e6f4ee',g:['#10b886','#46c2ff']},
+  {id:'rose',name:'로즈',bg:'#fbeef1',g:['#e85d86','#ffab6f']},
+];
+function renderThemes(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  themes.innerHTML=THEMES.map(t=>`
+    <button class="swatch ${t.id===cur?'sel':''}" onclick="setTheme('${t.id}')">
+      <div class="prev" style="background:${t.bg}">
+        <span class="g1" style="background:${t.g[0]}"></span><span class="g2" style="background:${t.g[1]}"></span></div>
+      <div class="lbl">${t.name}</div></button>`).join('');
+}
+function setTheme(id){document.documentElement.setAttribute('data-theme',id);renderThemes();
+  toast('테마: '+THEMES.find(t=>t.id===id).name);}
+
+/* ---------- modal + checkbox relation ---------- */
+function openModal(){overlay.classList.add('show');}
+function closeModal(){overlay.classList.remove('show');}
+function subs(){return [...document.querySelectorAll('.chk.sub')];}
+function toggleOne(el){el.classList.toggle('checked');syncAll();}
+function toggleAll(){
+  const all=chkAll, to=!all.classList.contains('checked');
+  all.classList.toggle('checked',to);
+  subs().forEach(s=>s.classList.toggle('checked',to));
+  syncReq();
+}
+function syncAll(){chkAll.classList.toggle('checked',subs().every(s=>s.classList.contains('checked')));syncReq();}
+function syncReq(){
+  const ok=subs().filter(s=>s.dataset.req==='1').every(s=>s.classList.contains('checked'));
+  agreeBtn.disabled=!ok;
+}
+function agree(){closeModal();toast('동의 완료 — 시작합니다 ✓');}
+
+/* ---------- util + init ---------- */
+let tt;
+function toast(m){toast_.textContent=m;toast_.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toast_.classList.remove('show'),1900);}
+const toast_=document.getElementById('toast');
+
+addRoom('분홍머리 소녀'); addRoom('판타지 풍경');
+active=rooms[0].id; renderRooms(); renderChat(); renderThemes(); showScreen('chat');
+ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';});
+ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+</script>
+</body>
+</html>

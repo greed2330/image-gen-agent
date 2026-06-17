@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<!--
+  image-gen-agent UI mockup — v4
+  changes vs v3: keeps v3's restrained palette, ADDS real frontend technique where space
+  was empty — 3D mouse-tilt cards, 3D flip reveal (progress→image), a coverflow gallery
+  that rotates (auto + drag + "spin once" button), magnetic buttons, count-up, FLIP list
+  reflow. Disposable design prototype.
+-->
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>image-gen-agent — Mockup v4</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0b;--sub:#0e0e10;--elev:#1a1a1d;--hover:#1a1a1d;--text:#f4f4f5;--text-2:#a1a1aa;--text-3:#6b6b73;--border:#222226;--border-2:#2c2c31;--accent:#5b8cff;--accent-soft:#16213a;--primary:#fafafa;--primary-text:#0a0a0b;--shadow:rgba(0,0,0,.4);--danger:#f0656c}
+[data-theme="light"]{--bg:#fff;--sub:#fafafa;--elev:#f4f4f5;--hover:#f4f4f5;--text:#18181b;--text-2:#52525b;--text-3:#a1a1aa;--border:#ececee;--border-2:#e0e0e3;--accent:#2f6df0;--accent-soft:#eef3fe;--primary:#18181b;--primary-text:#fff;--shadow:rgba(24,24,27,.08);--danger:#dc2626}
+[data-theme="slate"]{--bg:#0c0f16;--sub:#0f131c;--elev:#161b27;--hover:#161b27;--text:#e6eaf2;--text-2:#94a0b5;--text-3:#5e6a80;--border:#1c2230;--border-2:#27303f;--accent:#6ea8fe;--accent-soft:#152133;--primary:#e6eaf2;--primary-text:#0c0f16;--shadow:rgba(0,0,0,.5);--danger:#f0707a}
+[data-theme="sand"]{--bg:#faf9f6;--sub:#f5f3ee;--elev:#efece4;--hover:#efece4;--text:#22201b;--text-2:#6b6555;--text-3:#a39b88;--border:#e9e5db;--border-2:#ddd7c9;--accent:#a8631a;--accent-soft:#f4ebdc;--primary:#22201b;--primary-text:#faf9f6;--shadow:rgba(60,50,30,.1);--danger:#c0492b}
+html,body{height:100%}
+body{font-family:'Pretendard',-apple-system,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;font-size:14px;line-height:1.5;letter-spacing:-.011em;-webkit-font-smoothing:antialiased;transition:background .18s,color .18s}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit;letter-spacing:inherit}
+.app{display:flex;height:100vh}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:6px;border:3px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+.sidebar{width:248px;flex-shrink:0;display:flex;flex-direction:column;background:var(--sub);border-right:1px solid var(--border)}
+.brand{padding:16px 16px 12px;display:flex;align-items:center;gap:10px}
+.brand .mark{width:28px;height:28px;border-radius:7px;background:var(--primary);color:var(--primary-text);display:grid;place-items:center;font-weight:700;font-size:14px}
+.brand b{font-size:14px;font-weight:600;letter-spacing:-.02em}
+.brand span{display:block;font-size:11px;color:var(--text-3);margin-top:1px}
+.new-chat{margin:4px 12px 12px;height:36px;border-radius:8px;background:var(--primary);color:var(--primary-text);font-weight:550;font-size:13px;display:flex;align-items:center;justify-content:center;gap:7px;transition:opacity .15s}
+.new-chat:hover{opacity:.88}
+.rooms{flex:1;overflow-y:auto;padding:2px 8px}
+.rooms-label{font-size:11px;color:var(--text-3);font-weight:550;padding:10px 8px 6px}
+.room{display:flex;align-items:center;gap:9px;height:34px;padding:0 9px;border-radius:7px;margin-bottom:1px;font-size:13px;color:var(--text-2);cursor:pointer;transition:background .12s,color .12s}
+.room:hover{background:var(--hover);color:var(--text)}
+.room.active{background:var(--elev);color:var(--text);font-weight:550}
+.room .rname{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.room .del{opacity:0;width:22px;height:22px;border-radius:5px;display:grid;place-items:center;font-size:15px;color:var(--text-3);transition:opacity .12s,background .12s,color .12s}
+.room:hover .del{opacity:1}
+.room .del:hover{background:var(--border-2);color:var(--danger)}
+.side-foot{padding:8px;border-top:1px solid var(--border);display:flex;gap:4px}
+.nav-btn{flex:1;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text-2);transition:background .12s,color .12s}
+.nav-btn:hover{background:var(--hover);color:var(--text)}
+.nav-btn.active{background:var(--elev);color:var(--text);font-weight:550}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{height:52px;flex-shrink:0;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--border)}
+.topbar h2{font-size:14px;font-weight:600;flex:1;letter-spacing:-.02em}
+.pill{font-size:11.5px;color:var(--text-2);display:flex;align-items:center;gap:6px;padding:4px 10px;border:1px solid var(--border);border-radius:6px}
+.pill .dot{width:6px;height:6px;border-radius:50%;background:#3fb950}
+.screen{flex:1;overflow-y:auto;display:none}
+.screen.active{display:block}
+.chat-wrap{max-width:720px;margin:0 auto;padding:24px 24px 8px}
+.msg{display:flex;gap:11px;margin-bottom:20px;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.msg .av{width:28px;height:28px;border-radius:7px;flex-shrink:0;display:grid;place-items:center;font-size:12px;font-weight:600}
+.msg.ai .av{background:var(--primary);color:var(--primary-text)}
+.msg.user{flex-direction:row-reverse}
+.msg.user .av{background:var(--elev);color:var(--text-2);border:1px solid var(--border)}
+.bubble{max-width:82%;font-size:14px;line-height:1.65;padding-top:3px}
+.msg.user .bubble{background:var(--elev);padding:9px 13px;border-radius:11px;border-top-right-radius:4px}
+.bubble code{background:var(--elev);padding:1px 6px;border-radius:5px;font-size:12.5px;font-family:'SF Mono',Consolas,monospace;color:var(--text-2)}
+.typing{display:flex;gap:4px;padding:6px 0}
+.typing span{width:6px;height:6px;border-radius:50%;background:var(--text-3);animation:blink 1.3s infinite}
+.typing span:nth-child(2){animation-delay:.18s}.typing span:nth-child(3){animation-delay:.36s}
+@keyframes blink{0%,70%,100%{opacity:.3}35%{opacity:1}}
+.composer{flex-shrink:0;padding:12px 24px 18px;border-top:1px solid var(--border)}
+.composer-inner{max-width:720px;margin:0 auto;display:flex;align-items:flex-end;gap:8px;padding:7px 7px 7px 14px;border:1px solid var(--border-2);border-radius:12px;background:var(--bg);transition:border-color .15s}
+.composer-inner:focus-within{border-color:var(--text-3)}
+.composer textarea{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:inherit;font-size:14px;line-height:1.5;resize:none;max-height:120px;padding:7px 0;letter-spacing:inherit}
+.composer textarea::placeholder{color:var(--text-3)}
+.attach{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-size:18px;color:var(--text-3);transition:background .12s,color .12s}
+.attach:hover{background:var(--elev);color:var(--text-2)}
+.quick{max-width:720px;margin:9px auto 0;display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:12px;padding:6px 11px;border:1px solid var(--border);border-radius:7px;color:var(--text-2);transition:background .12s,border-color .12s,color .12s}
+.chip:hover{background:var(--sub);border-color:var(--border-2);color:var(--text)}
+.set-wrap{max-width:680px;margin:0 auto;padding:32px 24px 60px}
+.set-title{font-size:20px;font-weight:650;letter-spacing:-.03em;margin-bottom:4px}
+.set-sub{font-size:13px;color:var(--text-2);margin-bottom:28px}
+.set-wrap h3{font-size:12px;color:var(--text-3);font-weight:600;margin:26px 0 10px}
+.card{border:1px solid var(--border);border-radius:11px;overflow:hidden}
+.row{display:flex;align-items:center;gap:14px;padding:14px 16px;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:none}
+.row .info{flex:1}.row .info b{font-size:13.5px;font-weight:550;display:block}
+.row .info small{font-size:12px;color:var(--text-2);display:block;margin-top:2px}
+.themes{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:16px}
+.swatch{border:1px solid var(--border);border-radius:9px;overflow:hidden;background:none;text-align:left;transition:border-color .12s,transform .12s}
+.swatch:hover{border-color:var(--border-2);transform:translateY(-2px)}
+.swatch.sel{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.swatch .prev{height:46px;display:flex}
+.swatch .prev .l{width:34%;border-right:1px solid rgba(125,125,125,.15)}
+.swatch .prev .r{flex:1;position:relative}
+.swatch .prev .r::after{content:"";position:absolute;top:9px;left:9px;width:22px;height:5px;border-radius:3px;background:currentColor;opacity:.7}
+.swatch .lbl{font-size:11.5px;padding:8px 10px;font-weight:550;display:flex;align-items:center;gap:6px}
+.swatch .lbl .ck{margin-left:auto;color:var(--accent);opacity:0}
+.swatch.sel .lbl .ck{opacity:1}
+.toggle{width:40px;height:23px;border-radius:12px;background:var(--border-2);position:relative;flex-shrink:0;transition:background .18s}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:19px;height:19px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform .18s}
+.toggle.on{background:var(--accent)}.toggle.on::after{transform:translateX(17px)}
+.select{background:var(--bg);border:1px solid var(--border-2);color:var(--text);padding:7px 11px;border-radius:8px;font-size:13px;font-family:inherit;cursor:pointer}
+input[type=range]{accent-color:var(--accent);width:150px}
+.linkbtn{padding:7px 14px;border:1px solid var(--border-2);border-radius:8px;font-size:13px;font-weight:550;transition:background .12s}
+.linkbtn:hover{background:var(--sub)}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;place-items:center;z-index:50}
+.overlay.show{display:grid;animation:fade .15s}
+.modal{width:440px;max-width:92vw;background:var(--bg);border:1px solid var(--border-2);border-radius:14px;padding:24px;box-shadow:0 16px 40px var(--shadow);animation:up .2s ease}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.modal h3{font-size:17px;font-weight:650;letter-spacing:-.02em;margin-bottom:5px}
+.modal>p{font-size:13px;color:var(--text-2);margin-bottom:18px;line-height:1.55}
+.chk{display:flex;align-items:center;gap:11px;padding:11px;border-radius:9px;font-size:13.5px;user-select:none;cursor:pointer;transition:background .12s}
+.chk:hover{background:var(--sub)}.chk.all{font-weight:600;border:1px solid var(--border)}
+.chk.sub{margin-left:10px;color:var(--text-2)}
+.chk .box{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--border-2);flex-shrink:0;display:grid;place-items:center;color:#fff;transition:background .12s,border-color .12s}
+.chk.checked .box{background:var(--accent);border-color:var(--accent)}
+.chk .box svg{opacity:0;transition:opacity .12s}.chk.checked .box svg{opacity:1}
+.chk .req{margin-left:auto;font-size:11px;color:var(--text-3);font-weight:550}
+.hr{height:1px;background:var(--border);margin:6px 0}
+.modal-actions{display:flex;gap:8px;margin-top:20px}
+.btn{flex:1;height:40px;border-radius:9px;font-size:13.5px;font-weight:600;transition:opacity .15s,background .12s}
+.btn.primary{background:var(--primary);color:var(--primary-text)}
+.btn.primary:disabled{opacity:.35;cursor:not-allowed}
+.btn.primary:not(:disabled):hover{opacity:.88}
+.btn.ghost{border:1px solid var(--border-2);color:var(--text)}.btn.ghost:hover{background:var(--sub)}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--primary);color:var(--primary-text);padding:10px 18px;border-radius:9px;font-size:13px;font-weight:500;z-index:60;opacity:0;transition:opacity .2s,transform .2s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* magnetic buttons */
+.send{width:34px;height:34px;border-radius:8px;background:var(--primary);color:var(--primary-text);display:grid;place-items:center;font-size:15px;transition:transform .25s cubic-bezier(.2,.8,.2,1),opacity .15s;will-change:transform}
+.send:hover{opacity:.9}
+.mag{will-change:transform;transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+
+/* hero */
+.hero{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px}
+.hero .mark{width:44px;height:44px;border-radius:12px;background:var(--primary);color:var(--primary-text);display:grid;place-items:center;font-weight:700;font-size:20px;margin-bottom:20px}
+.hero h1{font-size:21px;font-weight:650;letter-spacing:-.03em}
+.hero p{font-size:14px;color:var(--text-2);max-width:400px;margin-top:8px;line-height:1.6}
+.examples{display:flex;flex-direction:column;gap:8px;margin-top:26px;width:100%;max-width:440px}
+.ex{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid var(--border);border-radius:10px;text-align:left;cursor:pointer;transition:background .12s,border-color .12s,transform .12s}
+.ex:hover{background:var(--sub);border-color:var(--border-2);transform:translateX(3px)}
+.ex .k{font-size:11px;font-weight:600;color:var(--text-3);width:38px;flex-shrink:0}
+.ex .t{font-size:13px}.ex .arr{margin-left:auto;color:var(--text-3);opacity:0;transition:opacity .12s,transform .12s}
+.ex:hover .arr{opacity:1;transform:translateX(3px)}
+
+/* ===== 3D flip generation card ===== */
+.flip3d{width:300px;max-width:100%;perspective:1300px;margin-top:12px}
+.flip3d .inner{position:relative;transform-style:preserve-3d;transition:transform 1s cubic-bezier(.6,.04,.2,1)}
+.flip3d.done .inner{transform:rotateY(180deg)}
+.face{border:1px solid var(--border);border-radius:13px;overflow:hidden;background:var(--sub);backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.face.back{position:absolute;inset:0;transform:rotateY(180deg)}
+.pic{aspect-ratio:832/1216;position:relative;display:grid;place-items:center}
+.face.front .pic{background:var(--elev)}
+.face.front .pic::before{content:"";position:absolute;inset:0;opacity:.5;background-image:linear-gradient(45deg,var(--border) 25%,transparent 25%,transparent 75%,var(--border) 75%),linear-gradient(45deg,var(--border) 25%,transparent 25%,transparent 75%,var(--border) 75%);background-size:18px 18px;background-position:0 0,9px 9px}
+.stat{position:relative;z-index:1;text-align:center;color:var(--text-2);font-size:12px}
+.stat b{display:block;font-size:15px;color:var(--text);font-weight:600;margin-bottom:3px;font-variant-numeric:tabular-nums}
+.top{height:2px;background:var(--border)}.top i{display:block;height:100%;width:0;background:var(--accent);transition:width .45s ease}
+.face .bar{display:flex;align-items:center;gap:6px;padding:9px 11px;border-top:1px solid var(--border)}
+.tag{font-size:11px;color:var(--text-2);padding:3px 8px;border:1px solid var(--border);border-radius:5px}
+.sp{flex:1}.ic{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;font-size:13px;color:var(--text-3);transition:background .12s,color .12s}
+.ic:hover{background:var(--elev);color:var(--text)}
+.face.back .pic{color:#fff;font-size:13px;font-weight:600}
+
+/* ===== tilt (mouse-tracked 3D) ===== */
+.tilt{transition:transform .3s cubic-bezier(.2,.8,.2,1);transform-style:preserve-3d;position:relative}
+.tilt .glare{position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .3s;background:radial-gradient(circle at var(--mx,50%) var(--my,50%),rgba(255,255,255,.35),transparent 45%);mix-blend-mode:overlay}
+.tilt:hover .glare{opacity:1}
+
+/* ===== coverflow gallery ===== */
+.gal-wrap{padding:18px 24px 28px;max-width:760px;margin:0 auto}
+.gal-head{display:flex;align-items:center;margin-bottom:6px}
+.gal-head h3{font-size:14px;font-weight:600;flex:1}
+.gal-head .meta{font-size:12px;color:var(--text-3)}
+.gallery{height:300px;perspective:1200px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;user-select:none}
+.gtrack{position:relative;transform-style:preserve-3d;width:190px;height:270px}
+.gcard{position:absolute;top:0;left:0;width:190px;height:270px;border-radius:16px;overflow:hidden;border:1px solid var(--border-2);cursor:pointer;backface-visibility:hidden;box-shadow:0 24px 50px var(--shadow);transition:transform .55s cubic-bezier(.2,.7,.2,1),opacity .55s,filter .55s}
+.gcard .body{position:absolute;inset:0;display:grid;place-items:center;font-size:30px}
+.gcard .num{position:absolute;top:10px;left:12px;font-size:11px;color:#fff;background:rgba(0,0,0,.35);padding:2px 9px;border-radius:20px;backdrop-filter:blur(4px)}
+.gcard .lab{position:absolute;left:0;right:0;bottom:0;padding:12px;font-size:12px;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.55))}
+.gal-ctrl{display:flex;gap:8px;justify-content:center;margin-top:14px}
+.gal-ctrl button{height:34px;padding:0 14px;border:1px solid var(--border-2);border-radius:8px;font-size:12.5px;font-weight:550;color:var(--text-2);transition:background .12s,color .12s}
+.gal-ctrl button:hover{background:var(--sub);color:var(--text)}
+.gal-ctrl button.accent{background:var(--primary);color:var(--primary-text);border-color:transparent}
+.gal-ctrl button.accent:hover{opacity:.88;background:var(--primary)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand"><div class="mark">화</div><div><b>화가 에이전트</b><span>local image-gen</span></div></div>
+    <button class="new-chat mag" onclick="addRoom()">＋ 새 채팅방</button>
+    <div class="rooms"><div class="rooms-label">채팅방</div><div id="roomList"></div></div>
+    <div class="side-foot">
+      <button class="nav-btn" id="navChat" onclick="showScreen('chat')">채팅</button>
+      <button class="nav-btn" id="navGal" onclick="showScreen('gal')">갤러리</button>
+      <button class="nav-btn" id="navSet" onclick="showScreen('set')">설정</button>
+    </div>
+  </aside>
+  <main class="main">
+    <div class="topbar"><h2 id="topTitle">새 작업</h2>
+      <span class="pill" id="topPill"><span class="dot"></span> SDXL · illustrious</span></div>
+
+    <section class="screen active" id="screen-chat"><div class="chat-wrap" id="chatWrap"></div></section>
+
+    <section class="screen" id="screen-gal">
+      <div class="gal-wrap">
+        <div class="gal-head"><h3>생성 갤러리</h3><span class="meta">드래그하거나 버튼으로 회전 · 카드에 마우스를 올리면 3D 틸트</span></div>
+        <div class="gallery" id="gallery"><div class="gtrack" id="gtrack"></div></div>
+        <div class="gal-ctrl">
+          <button onclick="galMove(-1)">← 이전</button>
+          <button class="accent" onclick="galSpin()">한 바퀴 회전 ⟳</button>
+          <button onclick="galMove(1)">다음 →</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="screen" id="screen-set">
+      <div class="set-wrap">
+        <div class="set-title">설정</div><div class="set-sub">화면 테마와 생성 기본값을 조정합니다.</div>
+        <h3>테마</h3><div class="card"><div class="themes" id="themes"></div></div>
+        <h3>생성 기본값</h3>
+        <div class="card">
+          <div class="row"><div class="info"><b>기본 체크포인트</b><small>새 채팅방의 시작 모델</small></div>
+            <select class="select"><option>WAI-illustrious</option><option>NoobAI-XL</option><option>Chroma (NSFW)</option></select></div>
+          <div class="row"><div class="info"><b>Steps</b><small><span id="stepVal">28</span> steps</small></div>
+            <input type="range" min="12" max="50" value="28" oninput="stepVal.textContent=this.value"></div>
+        </div>
+        <h3>두뇌 / 동작</h3>
+        <div class="card">
+          <div class="row"><div class="info"><b>자기평가 Critic 루프</b><small>생성 후 자동 품질검사 (Phase 3)</small></div><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+          <div class="row"><div class="info"><b>NSFW 허용</b><small>로컬 무검열 · 개인용</small></div><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+        </div>
+        <h3>약관</h3>
+        <div class="card"><div class="row"><div class="info"><b>이용 약관</b><small>전체/부분 동의 데모</small></div>
+          <button class="linkbtn" onclick="openModal()">약관 보기</button></div></div>
+      </div>
+    </section>
+
+    <div class="composer" id="composer">
+      <div class="composer-inner">
+        <button class="attach" onclick="toast('이미지 첨부 (목업)')">＋</button>
+        <textarea id="ta" rows="1" placeholder="만들고 싶은 그림을 설명해 주세요"></textarea>
+        <button class="send mag" onclick="send()">↑</button>
+      </div>
+      <div class="quick">
+        <button class="chip" onclick="send('분홍 머리 트윈테일 소녀가 창가에서 웃으며')">예시 프롬프트</button>
+        <button class="chip" onclick="send('더 부드러운 셀화풍으로')">스타일 조정</button>
+        <button class="chip" onclick="send('몽환적인 분위기로')">분위기 변경</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>약관 동의</h3>
+    <p>전체동의와 필수/선택 항목이 연동됩니다. 필수 항목을 모두 체크해야 시작할 수 있습니다.</p>
+    <label class="chk all" id="chkAll" onclick="toggleAll()"><span class="box"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 전체 동의</label>
+    <div class="hr"></div>
+    <label class="chk sub" data-req="1" onclick="toggleOne(this)"><span class="box"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 서비스 이용약관 <span class="req">필수</span></label>
+    <label class="chk sub" data-req="1" onclick="toggleOne(this)"><span class="box"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 개인정보 처리방침 <span class="req">필수</span></label>
+    <label class="chk sub" data-req="0" onclick="toggleOne(this)"><span class="box"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span> 생성 결과 로컬 저장 <span class="req">선택</span></label>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal()">취소</button>
+      <button class="btn primary" id="agreeBtn" disabled onclick="agree()">동의하고 시작</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+let rooms=[],active=null,rid=0,genId=0,turn=0;
+function addRoom(name){const id=++rid;rooms.push({id,name:name||`작업 ${id}`,msgs:[{who:'ai',hero:true}],model:'SDXL · illustrious'});active=id;renderRooms();renderChat();showScreen('chat');}
+function delRoom(id,e){e.stopPropagation();rooms=rooms.filter(r=>r.id!==id);active=active===id?(rooms.length?rooms[rooms.length-1].id:null):active;if(!rooms.length)addRoom('새 작업');else{renderRooms();renderChat();}toast('채팅방 삭제됨');}
+function pickRoom(id){active=id;renderRooms();renderChat();showScreen('chat');}
+function room(){return rooms.find(r=>r.id===active);}
+function renderRooms(){roomList.innerHTML=rooms.map(r=>`<div class="room ${r.id===active?'active':''}" onclick="pickRoom(${r.id})"><span class="rname">${r.name}</span><button class="del" onclick="delRoom(${r.id},event)">×</button></div>`).join('');}
+function renderChat(){const r=room();if(!r)return;topTitle.textContent=r.name;topPill.innerHTML=`<span class="dot"></span> ${r.model}`;chatWrap.innerHTML=r.msgs.map(msgHTML).join('');const sc=chatWrap.parentElement;sc.scrollTop=sc.scrollHeight;}
+function heroHTML(){return `<div class="hero"><div class="mark">화</div><h1>무엇을 그려볼까요?</h1><p>한국어로 설명하거나 레퍼런스 이미지를 올리면, 의도를 해석해 프롬프트를 합성하고 그려냅니다.</p><div class="examples"><div class="ex" onclick="send('분홍 머리 트윈테일 소녀가 창가에서 웃으며')"><span class="k">캐릭터</span><span class="t">분홍 머리 트윈테일 소녀가 창가에서</span><span class="arr">→</span></div><div class="ex" onclick="send('노을 지는 판타지 도시 풍경')"><span class="k">풍경</span><span class="t">노을 지는 판타지 도시, 와이드샷</span><span class="arr">→</span></div><div class="ex" onclick="send('몽환적인 수채화풍 인물')"><span class="k">스타일</span><span class="t">몽환적인 수채화풍으로</span><span class="arr">→</span></div></div></div>`;}
+function msgHTML(m){if(m.hero)return heroHTML();if(m.who==='user')return `<div class="msg user"><div class="av">나</div><div class="bubble">${m.text}</div></div>`;const body=m.typing?`<div class="typing"><span></span><span></span><span></span></div>`:`${m.text||''}${m.gen?genHTML(m):''}`;return `<div class="msg ai"><div class="av">화</div><div class="bubble">${body}</div></div>`;}
+function genHTML(m){return `<div class="flip3d" id="gen-${m.gid}"><div class="inner">
+  <div class="face front"><div class="top"><i></i></div><div class="pic"><div class="stat"><b>0%</b><span>대기 중</span></div></div><div class="bar"><span class="tag">28 steps</span><span class="tag">cfg 5.0</span><span class="sp"></span><span class="ic">↻</span></div></div>
+  <div class="face back"><div class="pic" style="background:linear-gradient(150deg,var(--accent-soft),var(--elev))">🌸</div><div class="bar"><span class="tag">832×1216</span><span class="sp"></span><span class="ic">♡</span><span class="ic">↓</span><span class="ic">↻</span></div></div>
+</div></div>`;}
+const STAGES=[{p:8,t:'LLM 언로드 · VRAM 반납'},{p:24,t:'ComfyUI 그래프 제출'},{p:42,t:'체크포인트 로드'},{p:62,t:'샘플링 16 / 28'},{p:84,t:'샘플링 26 / 28'},{p:95,t:'VAE 디코딩'},{p:100,t:'완료'}];
+function runGen(gid){const el=document.getElementById('gen-'+gid);if(!el)return;const fill=el.querySelector('.top i'),b=el.querySelector('.stat b'),s=el.querySelector('.stat span');let i=0,cur=0;
+  const tick=()=>{if(i>=STAGES.length){setTimeout(()=>el.classList.add('done'),250);return;}const st=STAGES[i];fill.style.width=st.p+'%';s.textContent=st.t;
+    const from=cur,to=st.p,t0=performance.now();(function up(){const k=Math.min(1,(performance.now()-t0)/450);b.textContent=Math.round(from+(to-from)*k)+'%';if(k<1)requestAnimationFrame(up);})();cur=to;i++;setTimeout(tick,i===1?500:650);};
+  setTimeout(tick,250);}
+
+const REPLIES=['의도를 해석했어요 → <code>1girl, pink hair, twintails, smile, window</code>. TIPO로 합성하고 생성합니다.','soft cel-shading 프리셋으로 다시 그립니다.','dreamy, soft lighting 태그를 더해 재생성합니다.'];
+function send(text){const r=room();if(!r)return;text=(text||ta.value).trim();if(!text)return;if(r.msgs.length===1&&r.msgs[0].hero)r.msgs=[];ta.value='';ta.style.height='auto';r.msgs.push({who:'user',text});r.msgs.push({who:'ai',typing:true});renderChat();
+  setTimeout(()=>{r.msgs.pop();const gid=++genId;r.msgs.push({who:'ai',text:REPLIES[turn%REPLIES.length],gen:true,gid});turn++;renderChat();runGen(gid);},750);}
+
+function showScreen(s){['chat','gal','set'].forEach(x=>document.getElementById('screen-'+x).classList.toggle('active',x===s));
+  navChat.classList.toggle('active',s==='chat');navGal.classList.toggle('active',s==='gal');navSet.classList.toggle('active',s==='set');
+  topTitle.textContent=s==='set'?'설정':s==='gal'?'갤러리':(room()?room().name:'');
+  topPill.style.display=s==='chat'?'':'none';composer.style.display=s==='chat'?'':'none';
+  if(s==='gal')galRender();}
+
+const THEMES=[{id:'dark',name:'다크',bg:'#0a0a0b',fg:'#f4f4f5'},{id:'light',name:'라이트',bg:'#fff',fg:'#18181b'},{id:'slate',name:'슬레이트',bg:'#0c0f16',fg:'#e6eaf2'},{id:'sand',name:'샌드',bg:'#faf9f6',fg:'#22201b'}];
+const CKM='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+function renderThemes(){const cur=document.documentElement.getAttribute('data-theme');themes.innerHTML=THEMES.map(t=>`<button class="swatch ${t.id===cur?'sel':''}" onclick="setTheme('${t.id}')"><div class="prev" style="background:${t.bg};color:${t.fg}"><div class="l"></div><div class="r"></div></div><div class="lbl">${t.name}<span class="ck">${CKM}</span></div></button>`).join('');}
+function setTheme(id){document.documentElement.setAttribute('data-theme',id);renderThemes();toast('테마: '+THEMES.find(t=>t.id===id).name);}
+
+function openModal(){overlay.classList.add('show');}function closeModal(){overlay.classList.remove('show');}
+function subs(){return[...document.querySelectorAll('.chk.sub')];}
+function toggleOne(el){el.classList.toggle('checked');syncAll();}
+function toggleAll(){const to=!chkAll.classList.contains('checked');chkAll.classList.toggle('checked',to);subs().forEach(s=>s.classList.toggle('checked',to));syncReq();}
+function syncAll(){chkAll.classList.toggle('checked',subs().every(s=>s.classList.contains('checked')));syncReq();}
+function syncReq(){agreeBtn.disabled=!subs().filter(s=>s.dataset.req==='1').every(s=>s.classList.contains('checked'));}
+function agree(){closeModal();toast('동의 완료');}
+let tt;const toastEl=document.getElementById('toast');
+function toast(m){toastEl.textContent=m;toastEl.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('show'),1800);}
+
+/* ===== coverflow gallery ===== */
+const GAL=[{e:'🌸',l:'분홍머리 소녀'},{e:'🏙️',l:'판타지 도시'},{e:'🌊',l:'해변 일러스트'},{e:'🌙',l:'몽환 수채화'},{e:'🔥',l:'전투 장면'}];
+let gi=0;
+function galRender(){
+  if(!gtrack.dataset.built){
+    gtrack.innerHTML=GAL.map((g,i)=>`<div class="gcard" data-i="${i}" onclick="galGo(${i})"><div class="glare"></div><div class="num">${i+1} / ${GAL.length}</div><div class="body" style="background:linear-gradient(150deg,var(--accent-soft),var(--elev))">${g.e}</div><div class="lab">${g.l}</div></div>`).join('');
+    gtrack.dataset.built=1;
+  }
+  galPos();
+}
+function galPos(){[...gtrack.children].forEach((c,i)=>{const o=i-gi;const base=`translateX(${o*125}px) translateZ(${-Math.abs(o)*150}px) rotateY(${o*-32}deg) scale(${o===0?1:.86})`;c.dataset.base=base;c.style.transform=base;c.style.opacity=Math.abs(o)>2?0:1;c.style.zIndex=100-Math.abs(o);c.style.filter=o===0?'none':'brightness(.55)';c.style.pointerEvents=Math.abs(o)>2?'none':'auto';});}
+function galGo(i){gi=i;galPos();}
+function galMove(d){gi=(gi+d+GAL.length)%GAL.length;galPos();}
+function galSpin(){gtrack.style.transition='transform 1.5s cubic-bezier(.45,0,.2,1)';gtrack.style.transform='rotateY(360deg)';toast('한 바퀴 ⟳');setTimeout(()=>{gtrack.style.transition='none';gtrack.style.transform='rotateY(0deg)';},1550);}
+
+/* center-card 3D tilt (mouse-tracked) */
+const gallery=document.getElementById('gallery');
+gallery.addEventListener('mousemove',e=>{const c=gtrack.children[gi];if(!c||!c.dataset.base)return;const r=c.getBoundingClientRect();const px=(e.clientX-r.left)/r.width-.5,py=(e.clientY-r.top)/r.height-.5;c.style.transform=c.dataset.base+` rotateX(${-py*14}deg) rotateY(${px*16}deg)`;const g=c.querySelector('.glare');g.style.setProperty('--mx',(px+.5)*100+'%');g.style.setProperty('--my',(py+.5)*100+'%');g.style.opacity=1;});
+gallery.addEventListener('mouseleave',()=>{const c=gtrack.children[gi];if(c){c.style.transform=c.dataset.base;c.querySelector('.glare').style.opacity=0;}});
+/* drag to rotate */
+let dx0=null,acc=0;
+gallery.addEventListener('pointerdown',e=>{dx0=e.clientX;acc=0;gallery.setPointerCapture(e.pointerId);});
+gallery.addEventListener('pointermove',e=>{if(dx0===null)return;acc+=e.clientX-dx0;dx0=e.clientX;if(Math.abs(acc)>70){galMove(acc>0?-1:1);acc=0;}});
+gallery.addEventListener('pointerup',()=>dx0=null);
+gallery.addEventListener('pointercancel',()=>dx0=null);
+
+/* magnetic buttons */
+function bindMagnet(){document.querySelectorAll('.mag').forEach(el=>{if(el.dataset.mag)return;el.dataset.mag=1;el.addEventListener('mousemove',e=>{const r=el.getBoundingClientRect();el.style.transform=`translate(${(e.clientX-r.left-r.width/2)*.3}px,${(e.clientY-r.top-r.height/2)*.45}px)`;});el.addEventListener('mouseleave',()=>el.style.transform='');});}
+
+/* init */
+addRoom('분홍머리 소녀');addRoom('판타지 풍경');
+active=rooms[0].id;renderRooms();renderChat();renderThemes();showScreen('chat');bindMagnet();
+ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';});
+ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}});
+</script>
+</body>
+</html>

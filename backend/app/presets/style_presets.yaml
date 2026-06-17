@@ -1,0 +1,47 @@
+# Style (art direction) presets layered on top of model presets.
+# LLM picks a style_preset name — never sets numbers directly.
+# Ref: docs/설계문서/07 §3-2
+
+soft_cel:
+  description: "부드러운 셀화, 파스텔 컬러"
+  extra_pos:
+    - soft lighting
+    - pastel colors
+    - smooth shading
+  loras:
+    - name: soft_anime_style
+      weight: 0.6
+  cfg_adjust: -0.5
+  steps_adjust: 0
+
+sharp_detailed:
+  description: "쨍하고 디테일한 일러스트"
+  extra_pos:
+    - highly detailed
+    - sharp focus
+    - intricate details
+  loras: []
+  cfg_adjust: 0.5
+  steps_adjust: 6
+
+watercolor:
+  description: "수채화 느낌"
+  extra_pos:
+    - watercolor (medium)
+    - traditional media
+    - soft edges
+  loras:
+    - name: watercolor
+      weight: 0.7
+  cfg_adjust: -0.5
+  steps_adjust: 0
+
+dark_fantasy:
+  description: "다크, 드라마틱 조명"
+  extra_pos:
+    - dark fantasy
+    - dramatic lighting
+    - deep shadows
+  loras: []
+  cfg_adjust: 0.5
+  steps_adjust: 4

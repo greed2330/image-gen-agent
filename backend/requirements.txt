@@ -1,0 +1,24 @@
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.8.0
+pydantic-settings>=2.4.0
+python-dotenv>=1.0.0
+httpx>=0.27.0
+websockets>=12.0
+mem0ai>=0.1.0
+qdrant-client>=1.10.0
+pyyaml>=6.0
+pytest>=8.0
+pytest-asyncio>=0.23.0
+
+# --- TIPO 프롬프트 합성 (③ prompt_compiler) ---
+# tipo-kgen: Illustrious/NoobAI와 동일 danbooru 어휘로 학습된 프롬프트 확장기 (대체 불가)
+tipo-kgen>=0.1.0
+# sentencepiece: TIPO Llama-arch 토크나이저(SentencePiece) 로딩에 필수
+sentencepiece>=0.2.0
+# transformers: TIPO transformers 백엔드 (GGUF/llama-cpp는 Windows DLL 문제로 미채택)
+transformers>=4.44,<6
+# torch: TIPO GPU 추론 필수 (CPU는 long 82s 사용불가, GPU 1.2s).
+#   ⚠️ CUDA 빌드를 별도 인덱스로 설치할 것 — requirements.txt로는 자동화 불가:
+#   pip install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
+torch>=2.4
