@@ -18,7 +18,7 @@ def test_intent_defaults():
 
 
 def test_intent_nsfw_levels():
-    i = Intent(nsfw_level=NsfwLevel.EXPLICIT, seed_tags=["1girl"])
+    i = Intent(nsfw_level=NsfwLevel.EXPLICIT, identity_tags=["1girl"])
     assert i.nsfw_level == 2
 
 

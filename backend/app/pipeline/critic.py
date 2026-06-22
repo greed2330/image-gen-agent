@@ -18,4 +18,6 @@ class Critic:
         self._ollama = ollama
 
     async def evaluate(self, image_path: str, prompt_context: dict) -> Critique:
-        raise NotImplementedError
+        # Phase 3: VL-based evaluation not yet implemented — always pass
+        logger.info("critic: Phase 3 stub — skipping evaluation for %s", image_path)
+        return Critique(passed=True)

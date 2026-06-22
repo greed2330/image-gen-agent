@@ -49,5 +49,8 @@ Thumbs.db
 .idea/
 *.swp
 
+# === Claude Code ===
+.claude/
+
 # === 예외: 예시·템플릿은 추적 ===
 !.env.example

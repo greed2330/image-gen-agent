@@ -59,7 +59,7 @@ def sample_intent():
     return Intent(
         subjects=["1girl"],
         style="anime",
-        seed_tags=["1girl", "pink hair", "twintails"],
+        identity_tags=["1girl", "pink hair", "twintails"],
         nsfw_level=NsfwLevel.SAFE,
     )
 

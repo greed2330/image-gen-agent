@@ -1,5 +1,7 @@
 import logging
+import random
 import time
+from typing import TYPE_CHECKING
 
 from app.clients.comfyui_client import ComfyUIClient
 from app.models.schemas import GenRequest, GenResult, PipelineTrace
@@ -9,6 +11,9 @@ from app.pipeline.param_resolver import ParamResolver
 from app.pipeline.prompt_compiler import PromptCompiler
 from app.pipeline.workflow_router import WorkflowRouter
 from app.services.vram_manager import VramManager
+
+if TYPE_CHECKING:
+    from app.services.chat_store import ChatStore
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +35,7 @@ class Orchestrator:
         critic: Critic,
         vram_manager: VramManager,
         comfyui: ComfyUIClient,
+        store: "ChatStore | None" = None,
     ) -> None:
         self._intent = intent_parser
         self._router = workflow_router
@@ -38,6 +44,7 @@ class Orchestrator:
         self._critic = critic
         self._vram = vram_manager
         self._comfyui = comfyui
+        self._store = store
 
     async def run(
         self,
@@ -51,6 +58,13 @@ class Orchestrator:
         t = time.monotonic()
         intent = await self._intent.parse(request)
         trace.record("① intent", {"message": request.message}, intent.model_dump(), t)
+
+        # Upload reference image (if any) to ComfyUI input dir for img2img routing in ②
+        input_image: str | None = None
+        if request.reference_image:
+            input_image = await self._comfyui.upload_image(request.reference_image)
+            intent.reference = input_image
+
         if stage_limit == 1:
             return GenResult(image_path=None, params=None, critique=None, trace=trace)
 
@@ -66,7 +80,7 @@ class Orchestrator:
         compiled = await self._compiler.compile(intent, route)
         trace.record(
             "③ compile",
-            {"seed_tags": intent.seed_tags},
+            {"identity": intent.identity_tags, "scene": intent.scene_tags},
             {**compiled.model_dump(), "dropped": compiled.dropped_tags},
             t,
         )
@@ -83,26 +97,110 @@ class Orchestrator:
 
         # ⑤ Execute
         logger.info("VRAM: preparing for generation")
+        seed = random.randint(0, 2**31 - 1)
+        generation_id: str | None = None
+        t_exec_start = time.monotonic()
+
         await self._vram.prepare_for_generation()
+        exec_error: Exception | None = None
+        image_path: str | None = None
         try:
             t = time.monotonic()
-            workflow = _build_workflow(compiled, params, route)
+            workflow = _build_workflow(compiled, params, route, seed, input_image=input_image)
             prompt_id = await self._comfyui.submit(workflow)
             image_path = await self._comfyui.wait_result(prompt_id)
             trace.record("⑤ execute", {"workflow_keys": list(workflow.keys())}, {"image_path": image_path}, t)
+        except Exception as exc:
+            exec_error = exc
         finally:
             await self._vram.release_after_generation()
+
+        # Save generation record (success or failure)
+        if self._store and request.chat_id:
+            from app.models.db import Generation as GenRecord
+            duration_ms = (time.monotonic() - t_exec_start) * 1000
+            gen_record = GenRecord(
+                room_id=request.chat_id,
+                user_message=request.message,
+                reference_image=request.reference_image,
+                identity_tags=intent.identity_tags,
+                scene_tags=intent.scene_tags,
+                nsfw_level=intent.nsfw_level.value,
+                style=intent.style,
+                workflow=route.workflow.value,
+                checkpoint=route.checkpoint,
+                model_profile=route.model_profile.value,
+                positive=compiled.positive,
+                negative=compiled.negative,
+                steps=params.steps,
+                cfg=params.cfg,
+                sampler=params.sampler,
+                scheduler=params.scheduler,
+                width=params.resolution.width,
+                height=params.resolution.height,
+                denoise=params.denoise,
+                seed=seed,
+                image_path=image_path,
+                duration_ms=duration_ms,
+                status="error" if exec_error else "ok",
+                error=str(exec_error) if exec_error else None,
+            )
+            saved = self._store.add_generation(gen_record)
+            generation_id = saved.id
+
+        if exec_error:
+            raise exec_error
 
         # ⑥ Critic
         t = time.monotonic()
         critique = await self._critic.evaluate(image_path, compiled.model_dump())
         trace.record("⑥ critic", {"image_path": image_path}, critique.model_dump(), t)
 
-        return GenResult(image_path=image_path, params=params, critique=critique, trace=trace)
+        return GenResult(
+            image_path=image_path,
+            params=params,
+            critique=critique,
+            trace=trace,
+            seed=seed,
+            generation_id=generation_id,
+        )
 
 
-def _build_workflow(compiled, params, route) -> dict:
-    """Assemble ComfyUI workflow JSON from compiled prompt + params.
-    Reads template from app/workflows/ and fills slots.
+def _build_workflow(compiled, params, route, seed: int, input_image: str | None = None) -> dict:
+    """Fill workflow template slots with compiled prompt + params.
+
+    Selects img2img.json when route.workflow == IMG2IMG (requires input_image),
+    otherwise uses txt2img.json.
     """
-    raise NotImplementedError
+    import json
+    from pathlib import Path
+    from app.models.schemas import WorkflowType
+
+    is_img2img = route.workflow == WorkflowType.IMG2IMG
+    template_name = "img2img.json" if is_img2img else "txt2img.json"
+    template_path = Path(__file__).parent.parent / "workflows" / template_name
+    with template_path.open(encoding="utf-8") as f:
+        workflow = json.load(f)
+
+    workflow.pop("_comment", None)
+
+    positive_text = ", ".join(compiled.positive)
+    negative_text = ", ".join(compiled.negative)
+
+    workflow["3"]["inputs"]["seed"] = seed
+    workflow["3"]["inputs"]["steps"] = params.steps
+    workflow["3"]["inputs"]["cfg"] = params.cfg
+    workflow["3"]["inputs"]["sampler_name"] = params.sampler
+    workflow["3"]["inputs"]["scheduler"] = params.scheduler
+    workflow["3"]["inputs"]["denoise"] = params.denoise
+    workflow["4"]["inputs"]["ckpt_name"] = route.checkpoint
+    workflow["6"]["inputs"]["text"] = positive_text
+    workflow["7"]["inputs"]["text"] = negative_text
+
+    if is_img2img:
+        workflow["10"]["inputs"]["image"] = input_image
+    else:
+        workflow["5"]["inputs"]["width"] = params.resolution.width
+        workflow["5"]["inputs"]["height"] = params.resolution.height
+
+    return workflow

@@ -1,128 +1,74 @@
-# 다음 작업 지시 (Sonnet handoff — 코드 스켈레톤)
+# Next Task Handoff (Sonnet) — 캐릭터 정체성 보존 + 기억 영속화 + img2img
 
-> 작성: 2026-06-10 (Opus, 설계 확정 후). 같은 세션 내 Sonnet 전환 전제.
-> 작업: **백엔드 스켈레톤 타이핑.** 아키텍처는 확정됨 — 아래 명세대로 옮기면 됨. 임의 변경 금지, 의문 생기면 멈추고 오너에게.
-
----
-
-## 0. 시작 전 필수 읽기
-
-1. `CLAUDE.md` — 작업 규칙. 특히 Simplicity First / Surgical / 하드코딩 금지 / 테스트 동반.
-2. `docs/설계문서/01-시스템-아키텍처.md` — 6단계 파이프라인.
-3. `docs/설계문서/07-프롬프트-및-파라미터-전략.md` — §1-A 합성 파이프라인(LLM 씨앗→TIPO→allowlist)이 핵심.
-4. `docs/설계문서/03-모델-선정.md` — 모델·TIPO 배정.
-5. `docs/작업기록/세션로그/session_002-2026-06-10-NSFW설계심화.md` — 결정 맥락.
+> Written 2026-06-18 by **Opus** (설계 세션). 이전 핸드오프(캐릭터 프리셋)는 **폐기됨**.
+> Opus가 설계 문서 3개를 완성품 수준으로 작성. Sonnet은 **추론 없이 문서대로 구현**한다.
 
 ---
 
-## 1. 만들 구조 (확정)
-
-```
-backend/
-  app/
-    main.py                # FastAPI 진입점, 라우트 등록
-    config.py              # .env 로드 (포트·모델명·경로). 하드코딩 금지
-    api/
-      routes_generate.py   # POST /generate, WS /progress
-      routes_chat.py       # 채팅방 CRUD
-    pipeline/
-      orchestrator.py      # 전체 흐름 ①→⑥ 조립 + PipelineTrace 생성
-      intent_parser.py     # ① 한국어 → Intent
-      workflow_router.py   # ② 워크플로우/체크포인트 라우팅
-      prompt_compiler.py   # ③ LLM 씨앗 → TIPO → allowlist
-      param_resolver.py    # ④ 프리셋 + nudge + clamp
-      critic.py            # ⑥ 비전 평가 루프
-    clients/
-      ollama_client.py     # 로컬 LLM/VL
-      comfyui_client.py    # ComfyUI HTTP + 그래프 제출 + /free
-      cloud_llm_client.py  # 클라우드 API
-      tipo_client.py       # TIPO 호출
-    services/
-      vram_manager.py      # 언로드 순서(LLM 먼저 → 이미지 모델)
-      memory.py            # mem0 래퍼
-      tag_allowlist.py     # danbooru CSV 검증/치환
-    models/
-      schemas.py           # pydantic 데이터 계약 (§2) — 진짜로 채움
-    presets/
-      model_presets.yaml   # 07 §3-1
-      style_presets.yaml   # 07 §3-2
-    workflows/
-      txt2img.json         # 템플릿 그래프
-    logging_config.py      # 표준 logging, logs/ 자동생성
-  cli/
-    chat.py                # 대화형 REPL (메모리 유지 확인)
-    trace.py               # 요청 1개 → 전 단계 I/O 덤프
-    memcheck.py            # 멀티턴 → mem0 회수 검증
-  tests/
-  .env.example
-  requirements.txt
-```
+## 0. 반드시 먼저 읽을 것 (순서대로)
+1. `CLAUDE.md` — Surgical / Simplicity First / 하드코딩 금지 / 테스트 동반.
+2. `docs/작업기록/체크리스트.md` — 현황 SSOT.
+3. **설계 지시서 3종 (이번 작업의 본체):**
+   - `docs/설계문서/09-캐릭터-정체성-보존.md`
+   - `docs/설계문서/10-대화-기억-영속화-및-일관성.md`
+   - `docs/설계문서/11-img2img-워크플로우.md`
+   - `docs/설계문서/12-대화-모델-교체.md`
+   - `docs/설계문서/13-이미지-다운로드.md`
 
 ---
 
-## 2. 데이터 계약 (schemas.py — 먼저 확정)
+## 1. 왜 이 작업인가 (증거 기반 — 반드시 이해하고 시작)
 
-pydantic 모델로. 이게 레이어 간 인터페이스라 가장 중요.
+오너의 핵심 불만: **"백호 수인 소녀"라고 분명히 말해도 정체성이 통째로 사라진다**(테스트 2번: 검은 머리 인간 소녀로 나옴).
 
-```
-Intent          : subjects, style, setting, mood, nsfw_level(int/enum),
-                  reference(optional), workflow_hint, seed_tags[list]   # 씨앗만
-RouteDecision   : workflow(enum: txt2img/img2img/inpaint/controlnet/ipadapter),
-                  checkpoint, loras[list]
-CompiledPrompt  : positive[list](TIPO+allowlist 통과 최종), negative[list],
-                  weights(dict), model_profile
-GenParams       : steps, cfg, sampler, scheduler, resolution(tuple), denoise
-Critique        : passed(bool), issues[list], retry(bool)
-GenRequest      : (사용자 입력 + 채팅방 id + 첨부 이미지)
-GenResult       : image_path, params, critique, trace
-PipelineTrace   : stages[list of {name, input, output, elapsed_ms}]
-```
+`POST /generate/dry-run` trace 실측 결과:
+- **① IntentParser는 정상** — 정체성 태그(tiger ears/white hair/kemonomimi)를 제대로 뽑음.
+- **③ TIPO가 범인** — 10개 seed를 40개로 부풀리며 (a) `black hair`/`multicolored hair` 같은 **모순 태그 주입**, (b) 인간 몸/의상 태그 ~23개로 정체성 ~10개를 **익사**시킴.
+
+→ 해결: **정체성(WHO)을 TIPO에서 빼고, 강조 가중치로 살리고, 모순 태그는 negative로 차단.**
+
+**폐기된 접근(다시 제안 금지):**
+- ❌ **캐릭터 프리셋(수동 태그 고정)** — 프리셋도 TIPO에 똑같이 익사 + 매번 수동 관리 비용. 오너가 명시적으로 거부.
+- ❌ **"흰색→주황 색 드리프트" 프레이밍** — 오진. 흰색은 정상 렌더됨(1·3번). 실제 모순은 black/multicolored hair.
 
 ---
 
-## 3. 스켈레톤 범위 (중요 — 과하게 만들지 말 것)
+## 2. 구현 순서 (의존성 있음 — 순서 지킬 것)
 
-- `schemas.py`: **완전히 구현.**
-- 그 외 모든 모듈: **타입힌트 + docstring + 스텁**(`raise NotImplementedError` 또는 mock 반환).
-- `presets/*.yaml`: 07 §3 예시값으로 채워둠.
-- `txt2img.json`: 빈 템플릿 또는 최소 골격 (ComfyUI 미설치라 실측은 Phase 1).
-- 테스트: 각 단계 스텁에 happy-path + 실패 1개, **외부 의존 전부 mock.**
+1. **09 — 1단계** (prompt_compiler 보호 메커니즘, 스키마 변경 없음) → 빠른 검증
+2. **09 — 2단계** (슬롯 분리 identity/scene, `Intent` 스키마 변경, TIPO 장면 전용)
+3. **10** (기억 영속화 **SQLite+SQLModel** + 생성기록 테이블 + 캐릭터 카드 누적) — **09-2단계의 identity_tags에 의존**. 배포용 DB(Postgres 등)는 추후 결정, 지금은 SQLite
+4. **11** (img2img) — 독립적, 위와 병행/이후 아무 때나
+5. **12** (대화 LLM 런타임 교체) — 독립적, 아무 때나
+6. **13** (이미지 다운로드 버튼) — 독립적, 소규모
 
----
-
-## 4. CLI 디버그 하버스 (오너 요청 — 필수)
-
-우리(에이전트)가 Bash로 직접 돌려 단계별 디버깅하기 위함. 프론트 없이 두뇌 검증.
-
-- **orchestrator는 `PipelineTrace`를 항상 생성** — 각 단계 입력/출력/소요시간 기록.
-- `trace.py`: 요청 1개 실행 → 트레이스 펼쳐 출력. ③에서 씨앗→TIPO→allowlist 변환 가시화, ⑤에서 ComfyUI payload 확인.
-- `chat.py`: 대화형 REPL. 같은 채팅방에서 턴 이어가며 mem0 유지 확인.
-- `memcheck.py`: 멀티턴 시나리오 → 기억 저장·회수 검증.
-- 필수 플래그: `--dry-run`(⑤ 직전까지, ComfyUI 없이), `--stage N`(N단계까지), 클라이언트 mock 주입 가능.
-- → ComfyUI/이미지모델 설치 전에도 ①~④ 두뇌 로직을 mock으로 검증 가능해야 함.
+각 단계는 별도 커밋(오너 요청 시). 각 문서 끝 "검증" 절을 통과한 뒤 다음 단계로.
 
 ---
 
-## 5. 작업 순서 (제안)
+## 3. 실행 환경
 
-1. `requirements.txt` + `config.py` + `logging_config.py` + `.env.example`
-2. `models/schemas.py` (계약 먼저)
-3. `clients/*` 스텁 (인터페이스만)
-4. `pipeline/*` 스텁 + `orchestrator.py`(트레이스 골격)
-5. `services/*` 스텁
-6. `api/*` + `main.py` (POST /generate가 orchestrator 호출하는 배선)
-7. `cli/*` (trace.py부터 — 제일 쓸모)
-8. `presets/*.yaml`, `workflows/txt2img.json`
-9. `tests/` (단계별 mock 테스트)
-
-> 각 단계 후 동작 확인. 커밋은 오너 요청 시에만. 막히면 체크리스트에 블로커 기록 후 멈춤.
+- **통합 실행**: `E:\image-gen-agent\start-all.bat` 더블클릭 → ollama·ComfyUI·backend·frontend 각 창으로 (로그 실시간). 순수 ASCII(인코딩 안전).
+- 백엔드 단독: `E:\image-gen-agent\backend\.venv\Scripts\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000` (글로벌 python은 kgen 없음 → 반드시 venv).
+- ollama 11434 (모델 7개 설치됨), ComfyUI 8188(`E:\ComfyUI\venv\Scripts\python.exe main.py`).
+- **dry-run 디버깅**: `POST /generate/dry-run` (①~④, ComfyUI 불필요) → trace로 단계별 태그 확인. trace 보기 헬퍼 패턴은 Opus가 사용한 방식 참고(JSON stages 순회).
 
 ---
 
-## 6. 절대 규칙 (CLAUDE.md 발췌)
+## 4. 주의사항 (유지)
 
-- 스켈레톤이니 **스텁 이상 구현 금지** (Simplicity First). 살은 Phase 2에서.
-- 경로·포트·모델명 하드코딩 금지 → `config.py`.
-- `print()` 금지 → logging. 단 `cli/`는 사용자 대면 출력이라 예외 허용.
-- 외부 의존(ollama/ComfyUI/cloud/TIPO) 실제 호출하는 테스트 금지 → mock.
-- 세션 종료 시 session_003 로그 작성.
+- **하드코딩 금지**: 경로·포트·모델명 → config/yaml.
+- **검열 모델로 NSFW 합성 금지** / NSFW 클라우드 라우팅 금지.
+- **VRAM**: LLM unload → ComfyUI → /free 순서(vram_manager가 처리, 건드리지 말 것).
+- **테스트 동반**: 새 함수/엔드포인트마다 happy + 1 failure. 외부 의존(ollama/ComfyUI/TIPO) mock.
+- **allowlist 현재 꺼짐**: `danbooru_tags.csv` 미보유(기동 로그 확인). 09-3단계 전까지 확장 태그 검증 안전망 없음 — 유의.
+- **프론트엔드**: `frontend/AGENTS.md` 경고 — 이 Next.js는 학습 데이터와 다름. 코드 수정 전 `node_modules/next/dist/docs/` 확인.
+- **커밋/푸시는 오너 요청 시에만.** git 최초 커밋 아직 대기 중.
+
+---
+
+## 5. 보류 (이번 범위 밖)
+
+- **mem0/Qdrant 자동 메모리** — doc 10의 JSON 카드로 당장 필요분 해결. mem0는 방-넘는 전역 취향용으로 나중. 이번에 구현 안 함.
+- **IPAdapter / ControlNet** — 레퍼런스를 "캐릭터/포즈로 사용"하는 건 별도 설계(Phase 3, qwen3-vl 분석 필요). doc 11은 "이미지 변형(img2img)"만.
+- **Critic 루프** — Phase 3. 현재 `Critique(passed=True)` passthrough.

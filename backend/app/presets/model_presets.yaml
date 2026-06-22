@@ -5,9 +5,11 @@
 illustrious_base:
   steps: 28
   cfg: 5.0
-  sampler: euler_a
+  sampler: euler_ancestral
   scheduler: normal
   clip_skip: 2
+  identity_emphasis: 1.3
+  img2img_denoise: 0.55
   resolutions:
     portrait: [832, 1216]
     landscape: [1216, 832]
@@ -33,9 +35,11 @@ illustrious_base:
 noobai_base:
   steps: 28
   cfg: 5.5
-  sampler: euler_a
+  sampler: euler_ancestral
   scheduler: karras
   clip_skip: 2
+  identity_emphasis: 1.3
+  img2img_denoise: 0.55
   resolutions:
     portrait: [832, 1216]
     landscape: [1216, 832]

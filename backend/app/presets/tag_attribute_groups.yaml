@@ -1,0 +1,39 @@
+# Mutually exclusive attribute groups.
+# If a protected (seed) tag claims a slot in a group, TIPO-added tags in the same group
+# are removed from positive and moved to negative.
+# Keys and values must be normalized (lowercase, spaces not underscores).
+hair_color:
+  - white hair
+  - black hair
+  - blonde hair
+  - brown hair
+  - red hair
+  - blue hair
+  - pink hair
+  - purple hair
+  - green hair
+  - silver hair
+  - grey hair
+  - orange hair
+  - multicolored hair
+  - streaked hair
+  - two-tone hair
+  - gradient hair
+eye_color:
+  - red eyes
+  - blue eyes
+  - green eyes
+  - yellow eyes
+  - amber eyes
+  - purple eyes
+  - brown eyes
+  - black eyes
+  - pink eyes
+  - orange eyes
+fur_color:
+  - white fur
+  - orange fur
+  - yellow fur
+  - brown fur
+  - black fur
+  - grey fur

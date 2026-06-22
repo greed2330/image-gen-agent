@@ -1,0 +1,52 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0a0b; --sub: #0e0e10; --elev: #1a1a1d; --hover: #1a1a1d;
+  --text: #f4f4f5; --text-2: #a1a1aa; --text-3: #6b6b73;
+  --border: #222226; --border-2: #2c2c31;
+  --accent: #5b8cff; --accent-soft: #16213a;
+  --primary: #fafafa; --primary-text: #0a0a0b;
+  --shadow: rgba(0,0,0,.45); --danger: #f0656c;
+}
+[data-theme="light"] {
+  --bg: #fff; --sub: #fafafa; --elev: #f1f1f3; --hover: #f4f4f5;
+  --text: #18181b; --text-2: #52525b; --text-3: #a1a1aa;
+  --border: #ececee; --border-2: #e0e0e3;
+  --accent: #2f6df0; --accent-soft: #eef3fe;
+  --primary: #18181b; --primary-text: #fff;
+  --shadow: rgba(24,24,27,.12); --danger: #dc2626;
+}
+[data-theme="slate"] {
+  --bg: #0c0f16; --sub: #0f131c; --elev: #161b27; --hover: #161b27;
+  --text: #e6eaf2; --text-2: #94a0b5; --text-3: #5e6a80;
+  --border: #1c2230; --border-2: #27303f;
+  --accent: #6ea8fe; --accent-soft: #152133;
+  --primary: #e6eaf2; --primary-text: #0c0f16;
+  --shadow: rgba(0,0,0,.55); --danger: #f0707a;
+}
+[data-theme="sand"] {
+  --bg: #faf9f6; --sub: #f5f3ee; --elev: #efece4; --hover: #efece4;
+  --text: #22201b; --text-2: #6b6555; --text-3: #a39b88;
+  --border: #e9e5db; --border-2: #ddd7c9;
+  --accent: #a8631a; --accent-soft: #f4ebdc;
+  --primary: #22201b; --primary-text: #faf9f6;
+  --shadow: rgba(60,50,30,.14); --danger: #c0492b;
+}
+
+html, body { height: 100%; }
+body {
+  font-family: 'Pretendard', -apple-system, 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg); color: var(--text);
+  overflow: hidden; font-size: 14px; line-height: 1.5;
+  letter-spacing: -.011em; -webkit-font-smoothing: antialiased;
+  transition: background .2s, color .2s;
+}
+button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; letter-spacing: inherit; }
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 6px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@keyframes blink { 0%, 70%, 100% { opacity: .3; } 35% { opacity: 1; } }
+@keyframes up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }

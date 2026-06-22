@@ -27,5 +27,10 @@ class Settings(BaseSettings):
 
     qdrant_url: str = "http://localhost:6333"
 
+    # ComfyUI output directory — must match ComfyUI's own output path
+    comfyui_output_dir: str = "E:/ComfyUI/output"
+    # ComfyUI input directory — reference images written here for img2img
+    comfyui_input_dir: str = "E:/ComfyUI/input"
+
 
 settings = Settings()
