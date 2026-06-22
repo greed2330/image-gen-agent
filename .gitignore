@@ -52,5 +52,7 @@ Thumbs.db
 # === Claude Code ===
 .claude/
 
-# === 예외: 예시·템플릿은 추적 ===
+# === 예외: 예시·템플릿, 문서용 스크린샷은 추적 ===
 !.env.example
+!docs/screenshots/*.png
+!docs/screenshots/*.jpg
