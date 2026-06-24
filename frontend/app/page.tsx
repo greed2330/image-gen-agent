@@ -369,28 +369,24 @@ export default function Home() {
       setActiveId(r.id);
       setScreen("chat");
     } catch {
-      // fallback: local room
-      const id = uid();
-      const newRoom: Room = { id, name: `작업 ${rooms.length + 1}`, messages: [{ id: uid(), role: "ai", hero: true }], loaded: true };
-      setRooms(prev => [...prev, newRoom]);
-      setActiveId(id);
-      setScreen("chat");
+      // backend unreachable — a local room would 404 on generate, so don't create one
+      alert("백엔드에 연결할 수 없어 새 채팅방을 만들지 못했습니다. 서버 상태를 확인해 주세요.");
     }
   }
 
-  function delRoom(id: string, e: React.MouseEvent) {
+  async function delRoom(id: string, e: React.MouseEvent) {
     e.stopPropagation();
     deleteChat(id).catch(() => {});
-    setRooms(prev => {
-      const next = prev.filter(r => r.id !== id);
-      if (next.length === 0) {
-        const fallback: Room = { id: uid(), name: "새 작업", messages: [{ id: uid(), role: "ai", hero: true }], loaded: true };
-        setActiveId(fallback.id);
-        return [fallback];
-      }
-      if (id === activeId) setActiveId(next[next.length - 1].id);
-      return next;
-    });
+    const next = rooms.filter(r => r.id !== id);
+    if (next.length === 0) {
+      // last room deleted → create a real DB room (a local uid room would 404 on generate)
+      const r = await createChat("새 작업");
+      setRooms([{ id: r.id, name: r.name, messages: [{ id: uid(), role: "ai", hero: true }], loaded: true }]);
+      setActiveId(r.id);
+      return;
+    }
+    setRooms(next);
+    if (id === activeId) setActiveId(next[next.length - 1].id);
   }
 
   async function loadRoomMessages(roomId: string) {
