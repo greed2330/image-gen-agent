@@ -5,7 +5,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from app.clients.comfyui_client import ComfyUIClient
-from app.models.schemas import GenRequest, GenResult, PipelineTrace, WorkflowType
+from app.models.schemas import GenRequest, GenResult, PipelineTrace, ReferenceMode, WorkflowType
 from app.pipeline.critic import Critic
 from app.pipeline.intent_parser import IntentParser
 from app.pipeline.param_resolver import ParamResolver
@@ -16,6 +16,7 @@ from app.services.vram_manager import VramManager
 if TYPE_CHECKING:
     from app.services.chat_store import ChatStore
     from app.services.progress_hub import ProgressHub
+    from app.services.reference_tagger import ReferenceTagger
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ class Orchestrator:
         comfyui: ComfyUIClient,
         store: "ChatStore | None" = None,
         progress_hub: "ProgressHub | None" = None,
+        reference_tagger: "ReferenceTagger | None" = None,
     ) -> None:
         self._intent = intent_parser
         self._router = workflow_router
@@ -49,6 +51,7 @@ class Orchestrator:
         self._comfyui = comfyui
         self._store = store
         self._progress_hub = progress_hub
+        self._ref_tagger = reference_tagger
 
     async def _emit_progress(self, value: int, maximum: int) -> None:
         """Relay one ComfyUI sampling-progress event to connected WS clients."""
@@ -78,6 +81,12 @@ class Orchestrator:
             input_image = await self._comfyui.upload_image(request.reference_image)
             intent.reference = input_image
             intent.reference_mode = request.reference_mode
+            # character mode: extract the reference's features (VL) to reinforce IPAdapter,
+            # which alone transfers distinctive features (ears/tail) weakly. (Doc 14)
+            if request.reference_mode == ReferenceMode.CHARACTER and self._ref_tagger:
+                extracted = await self._ref_tagger.extract(request.reference_image)
+                intent.identity_tags = _merge_tags(intent.identity_tags, extracted)
+                trace.record("①+ ref-tags", {"reference": input_image}, {"extracted": extracted}, t)
 
         if stage_limit == 1:
             return GenResult(image_path=None, params=None, critique=None, trace=trace)
@@ -178,6 +187,18 @@ class Orchestrator:
             seed=seed,
             generation_id=generation_id,
         )
+
+
+def _merge_tags(base: list[str], extra: list[str]) -> list[str]:
+    """Append extra tags to base, skipping case-insensitive duplicates."""
+    seen = {t.strip().lower() for t in base}
+    out = list(base)
+    for t in extra:
+        key = t.strip().lower()
+        if key and key not in seen:
+            seen.add(key)
+            out.append(t)
+    return out
 
 
 _TEMPLATE_BY_WORKFLOW = {
