@@ -34,7 +34,7 @@ function uid() {
 type RefMode = "character" | "pose" | "vary";
 const REF_MODES: { id: RefMode; label: string; tip: string; disabled?: boolean }[] = [
   { id: "character", label: "캐릭터 이식", tip: "이 캐릭터를 새 포즈·장면으로 (IPAdapter)" },
-  { id: "pose", label: "포즈 이식", tip: "준비 중 — 이 자세로 다른 캐릭터를 (openpose 예정)", disabled: true },
+  { id: "pose", label: "포즈 이식", tip: "이 자세 그대로 다른 캐릭터를 (ControlNet openpose)" },
   { id: "vary", label: "변형", tip: "이 이미지를 살짝 바꿔 (img2img)" },
 ];
 

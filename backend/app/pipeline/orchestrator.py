@@ -204,6 +204,7 @@ def _merge_tags(base: list[str], extra: list[str]) -> list[str]:
 _TEMPLATE_BY_WORKFLOW = {
     WorkflowType.IMG2IMG: "img2img.json",
     WorkflowType.IPADAPTER: "ipadapter.json",
+    WorkflowType.CONTROLNET: "controlnet.json",
 }
 
 
@@ -237,8 +238,8 @@ def _build_workflow(compiled, params, route, seed: int, input_image: str | None 
     workflow["6"]["inputs"]["text"] = positive_text
     workflow["7"]["inputs"]["text"] = negative_text
 
-    uses_empty_latent = route.workflow != WorkflowType.IMG2IMG   # txt2img + ipadapter
-    uses_reference = route.workflow in (WorkflowType.IMG2IMG, WorkflowType.IPADAPTER)
+    uses_empty_latent = route.workflow != WorkflowType.IMG2IMG   # txt2img + ipadapter + controlnet
+    uses_reference = route.workflow in (WorkflowType.IMG2IMG, WorkflowType.IPADAPTER, WorkflowType.CONTROLNET)
     if uses_empty_latent:
         workflow["5"]["inputs"]["width"] = params.resolution.width
         workflow["5"]["inputs"]["height"] = params.resolution.height

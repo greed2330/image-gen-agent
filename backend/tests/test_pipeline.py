@@ -332,6 +332,31 @@ def test_build_workflow_ipadapter_template():
     assert "_comment" not in wf
 
 
+def test_build_workflow_controlnet_template():
+    """CONTROLNET route: controlnet.json, reference at node 10, openpose preprocessor, KSampler fed by ControlNetApply(17)."""
+    from app.pipeline.orchestrator import _build_workflow
+    from app.models.schemas import CompiledPrompt, GenParams, Resolution
+
+    compiled = CompiledPrompt(positive=["1girl"], negative=[], model_profile=ModelProfile.ILLUSTRIOUS)
+    params = GenParams(
+        steps=28, cfg=5.0, sampler="euler_ancestral", scheduler="normal",
+        resolution=Resolution(width=832, height=1216), denoise=1.0,
+    )
+    route = RouteDecision(
+        workflow=WorkflowType.CONTROLNET,
+        checkpoint="wai.safetensors",
+        model_profile=ModelProfile.ILLUSTRIOUS,
+    )
+    wf = _build_workflow(compiled, params, route, seed=7, input_image="pose_ref.png")
+
+    assert wf["10"]["inputs"]["image"] == "pose_ref.png"          # reference loaded
+    assert wf["14"]["class_type"] == "OpenposePreprocessor"       # preprocessor present
+    assert wf["16"]["inputs"]["type"] == "openpose"               # union type set
+    assert wf["3"]["inputs"]["positive"] == ["17", 0]             # KSampler uses controlnet conditioning
+    assert wf["5"]["inputs"]["width"] == 832
+    assert "_comment" not in wf
+
+
 @pytest.mark.asyncio
 async def test_workflow_router_img2img_when_reference_set():
     """Intent with reference + default mode (vary) → IMG2IMG workflow."""
