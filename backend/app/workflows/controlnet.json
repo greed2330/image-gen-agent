@@ -1,5 +1,5 @@
 {
-  "_comment": "ComfyUI ControlNet openpose (pose transplant, Doc 14 mode=pose). Reference(10) -> OpenposePreprocessor(14) -> pose skeleton. Union promax(15) + SetUnionControlNetType(16,openpose). ControlNetApplyAdvanced(17) conditions pos/neg from the pose map; KSampler uses 17's conditioning. Character comes from the text prompt.",
+  "_comment": "ComfyUI ControlNet openpose (pose transplant, Doc 14 mode=pose). Reference(10) -> DWPreprocessor(14, DWPose — far better than classic openpose on anime) -> pose skeleton. Union promax(15) + SetUnionControlNetType(16,openpose). ControlNetApplyAdvanced(17) conditions pos/neg from the pose map; KSampler uses 17's conditioning. Character comes from the text prompt. Requires DWPose models in comfyui_controlnet_aux/ckpts (yzd-v/DWPose).",
   "3": {
     "class_type": "KSampler",
     "inputs": {
@@ -23,8 +23,8 @@
   "9": { "class_type": "SaveImage", "inputs": { "images": ["8", 0], "filename_prefix": "output" } },
   "10": { "class_type": "LoadImage", "inputs": { "image": "__REFERENCE__" } },
   "14": {
-    "class_type": "OpenposePreprocessor",
-    "inputs": { "image": ["10", 0], "detect_hand": "enable", "detect_body": "enable", "detect_face": "enable", "scale_stick_for_xinsr_cn": "disable", "resolution": 512 }
+    "class_type": "DWPreprocessor",
+    "inputs": { "image": ["10", 0], "detect_hand": "enable", "detect_body": "enable", "detect_face": "enable", "bbox_detector": "yolox_l.onnx", "pose_estimator": "dw-ll_ucoco_384.onnx", "scale_stick_for_xinsr_cn": "disable", "resolution": 512 }
   },
   "15": { "class_type": "ControlNetLoader", "inputs": { "control_net_name": "controlnet-union-sdxl-promax.safetensors" } },
   "16": { "class_type": "SetUnionControlNetType", "inputs": { "control_net": ["15", 0], "type": "openpose" } },

@@ -350,7 +350,7 @@ def test_build_workflow_controlnet_template():
     wf = _build_workflow(compiled, params, route, seed=7, input_image="pose_ref.png")
 
     assert wf["10"]["inputs"]["image"] == "pose_ref.png"          # reference loaded
-    assert wf["14"]["class_type"] == "OpenposePreprocessor"       # preprocessor present
+    assert wf["14"]["class_type"] == "DWPreprocessor"             # openpose preprocessor (DWPose)
     assert wf["16"]["inputs"]["type"] == "openpose"               # union type set
     assert wf["3"]["inputs"]["positive"] == ["17", 0]             # KSampler uses controlnet conditioning
     assert wf["5"]["inputs"]["width"] == 832
