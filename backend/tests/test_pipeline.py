@@ -310,13 +310,34 @@ def test_build_workflow_img2img_uses_correct_template():
 
 @pytest.mark.asyncio
 async def test_workflow_router_img2img_when_reference_set():
-    """Intent with reference field → IMG2IMG workflow."""
+    """Intent with reference + default mode (vary) → IMG2IMG workflow."""
     from app.pipeline.workflow_router import WorkflowRouter
 
     router = WorkflowRouter()
     intent = Intent(identity_tags=["1girl"], reference="ref_abc.png")
     result = await router.route(intent)
     assert result.workflow == WorkflowType.IMG2IMG
+
+
+@pytest.mark.asyncio
+async def test_workflow_router_reference_mode_branches():
+    """reference_mode (UI-selected) picks the workflow when a reference is present."""
+    from app.pipeline.workflow_router import WorkflowRouter
+    from app.models.schemas import ReferenceMode
+
+    router = WorkflowRouter()
+    cases = {
+        ReferenceMode.CHARACTER: WorkflowType.IPADAPTER,
+        ReferenceMode.POSE: WorkflowType.CONTROLNET,
+        ReferenceMode.VARY: WorkflowType.IMG2IMG,
+    }
+    for mode, expected in cases.items():
+        intent = Intent(reference="ref.png", reference_mode=mode)
+        assert (await router.route(intent)).workflow == expected
+
+    # No reference → always txt2img, mode ignored
+    intent = Intent(reference_mode=ReferenceMode.CHARACTER)
+    assert (await router.route(intent)).workflow == WorkflowType.TXT2IMG
 
 
 @pytest.mark.asyncio

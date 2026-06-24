@@ -72,11 +72,12 @@ class Orchestrator:
         intent = await self._intent.parse(request)
         trace.record("① intent", {"message": request.message}, intent.model_dump(), t)
 
-        # Upload reference image (if any) to ComfyUI input dir for img2img routing in ②
+        # Upload reference image (if any) to ComfyUI input dir; mode (UI-selected) drives routing in ②
         input_image: str | None = None
         if request.reference_image:
             input_image = await self._comfyui.upload_image(request.reference_image)
             intent.reference = input_image
+            intent.reference_mode = request.reference_mode
 
         if stage_limit == 1:
             return GenResult(image_path=None, params=None, critique=None, trace=trace)
