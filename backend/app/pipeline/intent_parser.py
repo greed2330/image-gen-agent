@@ -37,6 +37,9 @@ Output: {"subjects":["1girl"],"style":"anime","setting":null,"mood":null,"nsfw_l
 Input: "늑대 수인 소년, 검은 귀에 꼬리"
 Output: {"subjects":["1boy"],"style":"anime","setting":null,"mood":null,"nsfw_level":0,"identity_tags":["1boy","solo","animal ears","wolf ears","wolf tail","black hair","kemonomimi"],"scene_tags":[],"workflow_hint":null}
 
+Input: "하얀 머리에 옆머리만 빨간색으로 브릿지 염색한 소녀"
+Output: {"subjects":["1girl"],"style":"anime","setting":null,"mood":null,"nsfw_level":0,"identity_tags":["1girl","solo","white hair","red hair","multicolored hair","streaked hair"],"scene_tags":[],"workflow_hint":null}
+
 Input: "스포츠 브라랑 스패츠 입은 17세 소녀"
 Output: {"subjects":["1girl"],"style":"anime","setting":null,"mood":null,"nsfw_level":1,"identity_tags":["1girl","solo","teen"],"scene_tags":["sports bra","spats","midriff","bare midriff","athletic wear"],"workflow_hint":null}
 
@@ -52,6 +55,7 @@ Rules:
 - Clothing defaults to scene_tags; promote to identity_tags only if the user defines it as permanent ("always wears").
 - kemonomimi (수인/반수인): use "animal ears", "{species} ears", "{species} tail", "kemonomimi" — NEVER use the animal name alone
 - For colored-fur kemonomimi (백호, 흑표 etc.): always include BOTH hair color AND fur/body color (e.g. "white hair", "white fur", "white body")
+- Multi-color hair (브릿지/하이라이트/인너컬러/투톤/그라데이션): emit BOTH colors as "{color} hair" tags PLUS a structure tag — "multicolored hair" + "streaked hair" for highlights/bridge, "colored inner hair" for inner-color, "gradient hair" for gradient. Two distinct colors alone collapse to one; the structure tag is required. NEVER emit a literal "bridge dye" or "highlights".
 - nsfw_level: 0=SFW, 1=suggestive(swimwear/sports bra/lingerie/midriff), 2=explicit(nude/sex)
 - Carry over prior turn character identity into identity_tags; put only new changes in scene_tags
 - workflow_hint: null
