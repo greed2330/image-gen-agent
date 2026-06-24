@@ -1,0 +1,62 @@
+{
+  "_comment": "ComfyUI IPAdapter (character transplant, Doc 14 mode=character). KSampler model fed by the IPAdapter-patched model (13). Reference image loaded at node 10. weight 0.8 = balanced character likeness (tunable, Doc 14 §7).",
+  "3": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": ["13", 0],
+      "positive": ["6", 0],
+      "negative": ["7", 0],
+      "latent_image": ["5", 0],
+      "seed": "__SEED__",
+      "steps": "__STEPS__",
+      "cfg": "__CFG__",
+      "sampler_name": "__SAMPLER__",
+      "scheduler": "__SCHEDULER__",
+      "denoise": "__DENOISE__"
+    }
+  },
+  "4": {
+    "class_type": "CheckpointLoaderSimple",
+    "inputs": { "ckpt_name": "__CHECKPOINT__" }
+  },
+  "5": {
+    "class_type": "EmptyLatentImage",
+    "inputs": { "width": "__WIDTH__", "height": "__HEIGHT__", "batch_size": 1 }
+  },
+  "6": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["4", 1], "text": "__POSITIVE__" }
+  },
+  "7": {
+    "class_type": "CLIPTextEncode",
+    "inputs": { "clip": ["4", 1], "text": "__NEGATIVE__" }
+  },
+  "8": {
+    "class_type": "VAEDecode",
+    "inputs": { "samples": ["3", 0], "vae": ["4", 2] }
+  },
+  "9": {
+    "class_type": "SaveImage",
+    "inputs": { "images": ["8", 0], "filename_prefix": "output" }
+  },
+  "10": {
+    "class_type": "LoadImage",
+    "inputs": { "image": "__REFERENCE__" }
+  },
+  "12": {
+    "class_type": "IPAdapterUnifiedLoader",
+    "inputs": { "model": ["4", 0], "preset": "PLUS (high strength)" }
+  },
+  "13": {
+    "class_type": "IPAdapter",
+    "inputs": {
+      "model": ["12", 0],
+      "ipadapter": ["12", 1],
+      "image": ["10", 0],
+      "weight": 0.8,
+      "start_at": 0.0,
+      "end_at": 1.0,
+      "weight_type": "standard"
+    }
+  }
+}

@@ -5,7 +5,7 @@ import uuid
 from typing import TYPE_CHECKING
 
 from app.clients.comfyui_client import ComfyUIClient
-from app.models.schemas import GenRequest, GenResult, PipelineTrace
+from app.models.schemas import GenRequest, GenResult, PipelineTrace, WorkflowType
 from app.pipeline.critic import Critic
 from app.pipeline.intent_parser import IntentParser
 from app.pipeline.param_resolver import ParamResolver
@@ -180,18 +180,23 @@ class Orchestrator:
         )
 
 
+_TEMPLATE_BY_WORKFLOW = {
+    WorkflowType.IMG2IMG: "img2img.json",
+    WorkflowType.IPADAPTER: "ipadapter.json",
+}
+
+
 def _build_workflow(compiled, params, route, seed: int, input_image: str | None = None) -> dict:
     """Fill workflow template slots with compiled prompt + params.
 
-    Selects img2img.json when route.workflow == IMG2IMG (requires input_image),
-    otherwise uses txt2img.json.
+    Template by route.workflow (Doc 14): img2img.json / ipadapter.json / txt2img.json.
+    EmptyLatentImage(5) is used by txt2img and ipadapter; LoadImage(10) by img2img and
+    ipadapter (reference). Shared slots (3/4/6/7) are filled identically.
     """
     import json
     from pathlib import Path
-    from app.models.schemas import WorkflowType
 
-    is_img2img = route.workflow == WorkflowType.IMG2IMG
-    template_name = "img2img.json" if is_img2img else "txt2img.json"
+    template_name = _TEMPLATE_BY_WORKFLOW.get(route.workflow, "txt2img.json")
     template_path = Path(__file__).parent.parent / "workflows" / template_name
     with template_path.open(encoding="utf-8") as f:
         workflow = json.load(f)
@@ -211,10 +216,12 @@ def _build_workflow(compiled, params, route, seed: int, input_image: str | None 
     workflow["6"]["inputs"]["text"] = positive_text
     workflow["7"]["inputs"]["text"] = negative_text
 
-    if is_img2img:
-        workflow["10"]["inputs"]["image"] = input_image
-    else:
+    uses_empty_latent = route.workflow != WorkflowType.IMG2IMG   # txt2img + ipadapter
+    uses_reference = route.workflow in (WorkflowType.IMG2IMG, WorkflowType.IPADAPTER)
+    if uses_empty_latent:
         workflow["5"]["inputs"]["width"] = params.resolution.width
         workflow["5"]["inputs"]["height"] = params.resolution.height
+    if uses_reference:
+        workflow["10"]["inputs"]["image"] = input_image
 
     return workflow

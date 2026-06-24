@@ -308,6 +308,30 @@ def test_build_workflow_img2img_uses_correct_template():
     assert "_comment" not in wf
 
 
+def test_build_workflow_ipadapter_template():
+    """IPADAPTER route: ipadapter.json, reference at node 10, KSampler fed by IPAdapter(13), EmptyLatent kept."""
+    from app.pipeline.orchestrator import _build_workflow
+    from app.models.schemas import CompiledPrompt, GenParams, Resolution
+
+    compiled = CompiledPrompt(positive=["1girl"], negative=[], model_profile=ModelProfile.ILLUSTRIOUS)
+    params = GenParams(
+        steps=28, cfg=5.0, sampler="euler_ancestral", scheduler="normal",
+        resolution=Resolution(width=832, height=1216), denoise=1.0,
+    )
+    route = RouteDecision(
+        workflow=WorkflowType.IPADAPTER,
+        checkpoint="wai.safetensors",
+        model_profile=ModelProfile.ILLUSTRIOUS,
+    )
+    wf = _build_workflow(compiled, params, route, seed=7, input_image="ref_xyz.png")
+
+    assert wf["10"]["inputs"]["image"] == "ref_xyz.png"        # reference loaded
+    assert wf["13"]["class_type"] == "IPAdapter"               # apply node present
+    assert wf["3"]["inputs"]["model"] == ["13", 0]             # KSampler uses patched model
+    assert wf["5"]["inputs"]["width"] == 832                   # EmptyLatentImage filled
+    assert "_comment" not in wf
+
+
 @pytest.mark.asyncio
 async def test_workflow_router_img2img_when_reference_set():
     """Intent with reference + default mode (vary) → IMG2IMG workflow."""
