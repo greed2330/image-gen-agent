@@ -8,7 +8,7 @@ from app.clients.cloud_llm_client import CloudLLMClient
 from app.clients.ollama_client import OllamaClient
 from app.models.schemas import GenRequest, Intent, NsfwLevel, WorkflowType
 from app.services.memory import MemoryService
-from app.services.tag_groups import load_tag_groups, merge_identity
+from app.services.tag_groups import load_tag_groups
 
 if TYPE_CHECKING:
     from app.services.chat_store import ChatStore
@@ -174,13 +174,12 @@ class IntentParser:
             intent.nsfw_level, intent.identity_tags, intent.scene_tags, intent.exclude_tags,
         )
 
-        # Merge identity into room's character card (accumulates across turns)
-        if self._store and request.chat_id and self._groups:
-            prev = self._store.get_identity(request.chat_id)
-            merged = merge_identity(prev, intent.identity_tags, self._groups)
-            intent.identity_tags = merged
-            self._store.set_identity(request.chat_id, merged)
-
+        # NOTE: no sticky DB character-card merge. Cross-turn continuity comes from the
+        # conversation history passed to the LLM (_build_messages) — the model carries a
+        # character over only when the new turn is actually a continuation. A persistent
+        # card made every generation in a reused room inherit the old subject (e.g. a
+        # white-tiger card turned all later prompts into white tigers). General image
+        # generation must treat each prompt on its own. (Reverses part of Doc 10.)
         return intent
 
     def _ollama_model_for(self, level: NsfwLevel) -> str:
