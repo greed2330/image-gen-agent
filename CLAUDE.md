@@ -177,11 +177,10 @@ Before introducing any new tool or technology, check for naming confusion and de
 
 ## Git / Workflow (solo)
 
-> Git repo not yet initialized. Initialize in Phase 1 setup with `.gitignore` (exclude model files, `data/`, `logs/`, generated images).
-
 - Never push directly to `main`. Work on `feat/*` or `fix/*` branches, then PR.
-- **Commit/push only when owner requests it.** Commit message types: `feat/fix/refactor/docs/chore`.
-- Commit after each working unit (when asked). Recommended: every 3 files changed.
+- **Commit frequently and autonomously — commit at each logical working unit, without waiting for a per-commit request** (owner standing instruction, 2026-06-24). Professional granularity: one logical change per commit, conventional type prefix; never batch unrelated changes into a single commit.
+- **Push only when the owner asks** (outward-facing action; commits stay local until then). Commit message types: `feat/fix/refactor/docs/chore`.
+- Commit after each working unit. Recommended: ~3 files changed or one logical change, whichever comes first.
 - When blocked: stop, record the blocker in the checklist, do not guess.
 
 ### On Error
