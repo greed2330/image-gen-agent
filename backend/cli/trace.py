@@ -24,14 +24,21 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.models.schemas import GenRequest
 
 
-def _make_orchestrator(mock: bool = True):
-    """Build an Orchestrator. mock=True injects stub clients for offline testing."""
-    raise NotImplementedError
+def _make_orchestrator():
+    """Build the real Orchestrator (real ollama + TIPO clients) via app.deps.
+
+    A dry-run trace only needs stages ①–④, which use ollama (intent) and TIPO
+    (compile) but never ComfyUI — so no GPU/image model is loaded.
+    """
+    from app import deps
+    deps.init_all()
+    return deps.orchestrator
 
 
 async def main(message: str, dry_run: bool, stage_limit: int | None) -> None:
-    orchestrator = _make_orchestrator(mock=True)
-    request = GenRequest(message=message, chat_id="cli-trace")
+    orchestrator = _make_orchestrator()
+    # chat_id="" is falsy → skips the DB character-card write (no room needed for a trace).
+    request = GenRequest(message=message, chat_id="")
 
     result = await orchestrator.run(request, dry_run=dry_run, stage_limit=stage_limit)
 

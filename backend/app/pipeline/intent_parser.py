@@ -93,8 +93,9 @@ class IntentParser:
         # History gives the LLM enough context to carry over established character traits.
         messages = _build_messages(request)
 
+        primary_model = self._ollama_model_for(NsfwLevel.SAFE)
         raw = await self._ollama.chat(
-            model=self._ollama_model_for(NsfwLevel.SAFE),
+            model=primary_model,
             messages=messages,
             system=_SYSTEM_PROMPT,
             options={"temperature": 0.1},
@@ -103,7 +104,10 @@ class IntentParser:
         logger.info("intent_parser raw response (first 300): %r", raw[:300])
         data = _extract_json(raw)
         if data is None:
-            logger.warning("intent_parser: JSON parse failed, retrying with abliterated")
+            logger.warning(
+                "intent_parser: %s produced unparseable output (len=%d), retrying with abliterated",
+                primary_model, len(raw),
+            )
             raw = await self._ollama.chat(
                 model=self._ollama_model_for(NsfwLevel.EXPLICIT),
                 messages=messages,
