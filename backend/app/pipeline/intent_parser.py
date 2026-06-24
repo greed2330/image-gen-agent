@@ -56,7 +56,7 @@ Input: "학교 복도에서 걷는 남녀 학생"
 Output: {"subjects":["1boy","1girl"],"style":"anime","setting":"school","mood":null,"nsfw_level":0,"identity_tags":["1boy","1girl","school uniform"],"scene_tags":["hallway","walking","couple"],"workflow_hint":null}
 
 Input: "금발 트윈테일 소녀와 흑발 단발 소녀가 나란히 서 있는 그림"
-Output: {"subjects":["2girls"],"style":"anime","setting":null,"mood":null,"nsfw_level":0,"identity_tags":["2girls","multiple girls","blonde hair","twintails","black hair","short hair"],"scene_tags":["standing","side by side"],"exclude_tags":["solo","solo focus"],"workflow_hint":null}
+Output: {"subjects":["2girls"],"style":"anime","setting":null,"mood":null,"nsfw_level":0,"identity_tags":["2girls","multiple girls"],"scene_tags":["standing","side by side"],"exclude_tags":["solo","solo focus"],"characters":[["1girl","blonde hair","twintails"],["1girl","black hair","short hair"]],"workflow_hint":null}
 
 Rules:
 - identity_tags: 4-10 tags. species, fur/body color, hair color, eye color, age, permanent features, AND clothing the character "always wears". Protected from TIPO expansion.
@@ -67,7 +67,8 @@ Rules:
 - For colored-fur kemonomimi (백호, 흑표 etc.): always include BOTH hair color AND fur/body color (e.g. "white hair", "white fur", "white body")
 - Multi-color hair (브릿지/하이라이트/인너컬러/투톤/그라데이션): emit BOTH colors as "{color} hair" tags PLUS a structure tag — "multicolored hair" + "streaked hair" for highlights/bridge, "colored inner hair" for inner-color, "gradient hair" for gradient. Two distinct colors alone collapse to one; the structure tag is required. NEVER emit a literal "bridge dye" or "highlights".
 - nsfw_level: 0=SFW, 1=suggestive(swimwear/sports bra/lingerie/midriff), 2=explicit(nude/sex)
-- Multiple same-gender characters: use the COUNT tag ("2girls"/"3girls"/"2boys"), NEVER repeat "1girl"/"1boy", and NEVER include "solo". Mixed gender: "1boy 1girl". Also add "solo" and "solo focus" to exclude_tags (TIPO tends to re-inject them). List each character's attributes (tags cannot bind which character has which — that is expected).
+- Multiple same-gender characters: use the COUNT tag ("2girls"/"3girls"/"2boys"), NEVER repeat "1girl"/"1boy", and NEVER include "solo". Mixed gender: "1boy 1girl". Also add "solo" and "solo focus" to exclude_tags (TIPO tends to re-inject them).
+- characters: for 2+ DISTINCT characters, output per-character tag groups — each group is ONE character's OWN attributes (hair color/style, eye color, species, age). Put the count tag in identity_tags and shared scene in scene_tags, NOT in characters. Single character → "characters": []. (Drives regional binding so each character keeps its own colors.)
 - Carry over prior turn character identity into identity_tags; put only new changes in scene_tags
 - workflow_hint: null
 - Output ONLY the JSON object, nothing else."""
@@ -166,6 +167,7 @@ class IntentParser:
             identity_tags=identity_tags,
             scene_tags=scene_tags,
             exclude_tags=data.get("exclude_tags", []),
+            characters=[g for g in data.get("characters", []) if isinstance(g, list) and g],
         )
         logger.info(
             "intent: nsfw=%s identity=%s scene=%s exclude=%s",

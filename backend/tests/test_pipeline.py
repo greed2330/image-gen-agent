@@ -390,6 +390,41 @@ async def test_workflow_router_reference_mode_branches():
 
 
 @pytest.mark.asyncio
+async def test_workflow_router_regional_for_multichar():
+    """2+ character groups (no reference) → REGIONAL; single → TXT2IMG."""
+    from app.pipeline.workflow_router import WorkflowRouter
+
+    router = WorkflowRouter()
+    multi = Intent(characters=[["1girl", "blonde hair"], ["1girl", "black hair"]])
+    assert (await router.route(multi)).workflow == WorkflowType.REGIONAL
+
+    single = Intent(characters=[["1girl", "blonde hair"]])
+    assert (await router.route(single)).workflow == WorkflowType.TXT2IMG
+
+
+def test_build_regional_workflow_two_characters():
+    """Regional graph: per-character region text + areas, combine chain into KSampler.positive."""
+    from app.pipeline.orchestrator import _build_regional_workflow
+    from app.models.schemas import CompiledPrompt, GenParams, Resolution
+
+    compiled = CompiledPrompt(positive=["masterpiece", "2girls"], negative=["worst quality"], model_profile=ModelProfile.ILLUSTRIOUS)
+    params = GenParams(steps=28, cfg=5.0, sampler="euler_ancestral", scheduler="normal",
+                       resolution=Resolution(width=1024, height=1024), denoise=1.0)
+    route = RouteDecision(workflow=WorkflowType.REGIONAL, checkpoint="wai.safetensors", model_profile=ModelProfile.ILLUSTRIOUS)
+    chars = [["1girl", "blonde hair"], ["1girl", "black hair"]]
+
+    wf = _build_regional_workflow(compiled, params, route, seed=5, characters=chars)
+
+    assert wf["100"]["inputs"]["text"] == "1girl, blonde hair"   # region 0 prompt
+    assert wf["102"]["inputs"]["text"] == "1girl, black hair"    # region 1 prompt
+    assert wf["101"]["inputs"]["x"] == 0.0 and wf["101"]["inputs"]["width"] == 0.5   # left column
+    assert wf["103"]["inputs"]["x"] == 0.5                                           # right column
+    pos = wf["3"]["inputs"]["positive"]
+    assert wf[pos[0]]["class_type"] == "ConditioningCombine"     # KSampler positive = combined
+    assert wf["3"]["inputs"]["negative"] == ["7", 0]
+
+
+@pytest.mark.asyncio
 async def test_param_resolver_img2img_denoise():
     """IMG2IMG route uses img2img_denoise preset value."""
     from app.pipeline.param_resolver import ParamResolver

@@ -129,7 +129,10 @@ class Orchestrator:
         image_path: str | None = None
         try:
             t = time.monotonic()
-            workflow = _build_workflow(compiled, params, route, seed, input_image=input_image)
+            if route.workflow == WorkflowType.REGIONAL:
+                workflow = _build_regional_workflow(compiled, params, route, seed, intent.characters)
+            else:
+                workflow = _build_workflow(compiled, params, route, seed, input_image=input_image)
             client_id = uuid.uuid4().hex
             image_path = await self._comfyui.generate(workflow, client_id, self._emit_progress)
             trace.record("⑤ execute", {"workflow_keys": list(workflow.keys())}, {"image_path": image_path}, t)
@@ -206,6 +209,49 @@ _TEMPLATE_BY_WORKFLOW = {
     WorkflowType.IPADAPTER: "ipadapter.json",
     WorkflowType.CONTROLNET: "controlnet.json",
 }
+
+
+def _build_regional_workflow(compiled, params, route, seed: int, characters: list[list[str]]) -> dict:
+    """Dynamically build a multi-character regional-prompt graph (Doc 15).
+
+    Each character group conditions an equal vertical column; a shared base
+    conditioning (compiled.positive: quality + count + scene) covers the full
+    canvas. All are merged via ConditioningCombine into KSampler.positive.
+    """
+    n = len(characters)
+    wf: dict = {
+        "3": {"class_type": "KSampler", "inputs": {
+            "model": ["4", 0], "positive": None, "negative": ["7", 0], "latent_image": ["5", 0],
+            "seed": seed, "steps": params.steps, "cfg": params.cfg,
+            "sampler_name": params.sampler, "scheduler": params.scheduler, "denoise": params.denoise}},
+        "4": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": route.checkpoint}},
+        "5": {"class_type": "EmptyLatentImage", "inputs": {"width": params.resolution.width, "height": params.resolution.height, "batch_size": 1}},
+        "6": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["4", 1], "text": ", ".join(compiled.positive)}},
+        "7": {"class_type": "CLIPTextEncode", "inputs": {"clip": ["4", 1], "text": ", ".join(compiled.negative)}},
+        "8": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["4", 2]}},
+        "9": {"class_type": "SaveImage", "inputs": {"images": ["8", 0], "filename_prefix": "output"}},
+        # shared base conditioning over the full canvas
+        "20": {"class_type": "ConditioningSetAreaPercentage", "inputs": {"conditioning": ["6", 0], "width": 1.0, "height": 1.0, "x": 0.0, "y": 0.0, "strength": 1.0}},
+    }
+
+    region_conds = ["20"]
+    for i, group in enumerate(characters):
+        txt_id, area_id = str(100 + i * 2), str(101 + i * 2)
+        wf[txt_id] = {"class_type": "CLIPTextEncode", "inputs": {"clip": ["4", 1], "text": ", ".join(group)}}
+        wf[area_id] = {"class_type": "ConditioningSetAreaPercentage", "inputs": {
+            "conditioning": [txt_id, 0], "width": round(1.0 / n, 4), "height": 1.0,
+            "x": round(i / n, 4), "y": 0.0, "strength": 1.0}}
+        region_conds.append(area_id)
+
+    # chain ConditioningCombine over [base, region0, region1, ...]
+    prev, combine_id = region_conds[0], 200
+    for nxt in region_conds[1:]:
+        cid = str(combine_id)
+        combine_id += 1
+        wf[cid] = {"class_type": "ConditioningCombine", "inputs": {"conditioning_1": [prev, 0], "conditioning_2": [nxt, 0]}}
+        prev = cid
+    wf["3"]["inputs"]["positive"] = [prev, 0]
+    return wf
 
 
 def _build_workflow(compiled, params, route, seed: int, input_image: str | None = None) -> dict:

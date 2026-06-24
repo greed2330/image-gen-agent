@@ -27,6 +27,8 @@ class WorkflowRouter:
     async def route(self, intent: Intent) -> RouteDecision:
         if intent.reference:
             workflow = _MODE_WORKFLOW.get(intent.reference_mode, WorkflowType.IMG2IMG)
+        elif len(intent.characters) >= 2:
+            workflow = WorkflowType.REGIONAL   # multi-character → per-character regions (Doc 15)
         else:
             workflow = WorkflowType.TXT2IMG
         checkpoint = _CHECKPOINT_WAI
