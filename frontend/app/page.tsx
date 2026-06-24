@@ -30,6 +30,14 @@ function uid() {
   return Math.random().toString(36).slice(2);
 }
 
+// Reference-use modes (Doc 14). pose disabled until openpose preprocessor lands.
+type RefMode = "character" | "pose" | "vary";
+const REF_MODES: { id: RefMode; label: string; tip: string; disabled?: boolean }[] = [
+  { id: "character", label: "캐릭터 이식", tip: "이 캐릭터를 새 포즈·장면으로 (IPAdapter)" },
+  { id: "pose", label: "포즈 이식", tip: "이 자세 그대로 다른 캐릭터를 (ControlNet openpose)" },
+  { id: "vary", label: "변형", tip: "이 이미지를 살짝 바꿔 (img2img)" },
+];
+
 // ── GenCard ───────────────────────────────────────────────────────────────────
 function GenCard({
   msg,
@@ -303,6 +311,7 @@ export default function Home() {
   const [screen, setScreen] = useState<"chat" | "settings">("chat");
   const [lightbox, setLightbox] = useState<{ path: string; params: Message["params"] | null } | null>(null);
   const [attachedImage, setAttachedImage] = useState<string | null>(null); // base64 data URL
+  const [refMode, setRefMode] = useState<RefMode>("character"); // how to use the reference (Doc 14)
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -430,7 +439,7 @@ export default function Home() {
     }));
 
     try {
-      const result = await generateInChat(roomId, msg || "이미지를 참고해서 그림을 그려줘", historySnapshot, refImg ?? undefined);
+      const result = await generateInChat(roomId, msg || "이미지를 참고해서 그림을 그려줘", historySnapshot, refImg ?? undefined, refImg ? refMode : undefined);
 
       updateRoom(roomId, r => ({
         ...r,
@@ -575,8 +584,19 @@ export default function Home() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={attachedImage} alt="첨부 이미지" className={styles.attachThumb} />
                   <div className={styles.attachInfo}>
-                    <span>레퍼런스 이미지</span>
-                    <small>Phase 3에서 img2img / ControlNet에 연결됩니다</small>
+                    <span>레퍼런스 활용 방식</span>
+                    <div className={styles.modeSelect} role="group" aria-label="레퍼런스 모드">
+                      {REF_MODES.map(m => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className={styles.modeOpt + (refMode === m.id ? " " + styles.modeOptActive : "")}
+                          title={m.tip}
+                          disabled={m.disabled}
+                          onClick={() => setRefMode(m.id)}
+                        >{m.label}</button>
+                      ))}
+                    </div>
                   </div>
                   <button
                     className={styles.attachClear}

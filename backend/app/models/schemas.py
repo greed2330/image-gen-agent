@@ -11,6 +11,18 @@ class WorkflowType(str, Enum):
     INPAINT = "inpaint"
     CONTROLNET = "controlnet"
     IPADAPTER = "ipadapter"
+    REGIONAL = "regional"
+
+
+class ReferenceMode(str, Enum):
+    """How to use an attached reference image (UI-selected, see Doc 14).
+
+    character → IPAdapter (keep character look) / pose → ControlNet (keep pose)
+    / vary → img2img (whole-image variation). Default vary (safest on mis-pick).
+    """
+    CHARACTER = "character"
+    POSE = "pose"
+    VARY = "vary"
 
 
 class ModelProfile(str, Enum):
@@ -43,10 +55,12 @@ class Intent(BaseModel):
     mood: Optional[str] = None
     nsfw_level: NsfwLevel = NsfwLevel.SAFE
     reference: Optional[str] = None      # local file path
+    reference_mode: ReferenceMode = ReferenceMode.VARY  # set from GenRequest (UI), not the LLM
     workflow_hint: Optional[WorkflowType] = None
-    identity_tags: list[str] = Field(default_factory=list)  # WHO — protected, emphasized, TIPO-excluded
+    identity_tags: list[str] = Field(default_factory=list)  # WHO (shared/count) — protected, emphasized, TIPO-excluded
     scene_tags: list[str] = Field(default_factory=list)      # WHAT — TIPO expands
     exclude_tags: list[str] = Field(default_factory=list)    # NOT wanted — forced to negative, stripped from positive
+    characters: list[list[str]] = Field(default_factory=list)  # per-character tag groups (Doc 15); len>=2 → regional
 
     @property
     def seed_tags(self) -> list[str]:
@@ -128,6 +142,7 @@ class GenRequest(BaseModel):
     chat_id: str
     history: list[HistoryMessage] = Field(default_factory=list)  # recent prior turns
     reference_image: Optional[str] = None   # base64 or file path
+    reference_mode: ReferenceMode = ReferenceMode.VARY  # UI-selected; only meaningful with reference_image
 
 
 class GenResult(BaseModel):

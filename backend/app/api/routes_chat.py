@@ -123,6 +123,7 @@ async def chat_generate(chat_id: str, request: GenRequest) -> GenResult:
         chat_id=chat_id,
         history=request.history,
         reference_image=request.reference_image,
+        reference_mode=request.reference_mode,
     )
     try:
         result = await orchestrator.run(req)

@@ -12,6 +12,7 @@ from app.pipeline.workflow_router import WorkflowRouter
 from app.services.chat_store import ChatStore
 from app.services.memory import MemoryService
 from app.services.progress_hub import ProgressHub
+from app.services.reference_tagger import ReferenceTagger
 from app.services.runtime_config import RuntimeConfig
 from app.services.tag_allowlist import TagAllowlist
 from app.services.vram_manager import VramManager
@@ -26,6 +27,7 @@ memory = MemoryService()
 chat_store = ChatStore()
 runtime_config = RuntimeConfig()
 progress_hub = ProgressHub()
+reference_tagger = ReferenceTagger(ollama=ollama)
 vram_manager = VramManager(ollama=ollama, comfyui=comfyui)
 
 intent_parser = IntentParser(ollama=ollama, cloud=cloud, memory=memory, store=chat_store, runtime=runtime_config)
@@ -44,6 +46,7 @@ orchestrator = Orchestrator(
     comfyui=comfyui,
     store=chat_store,
     progress_hub=progress_hub,
+    reference_tagger=reference_tagger,
 )
 
 

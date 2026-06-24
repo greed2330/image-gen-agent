@@ -223,6 +223,20 @@
 .attachClear:hover { background: var(--border-2); color: var(--danger); }
 .attachActive { color: var(--accent) !important; }
 
+/* reference-mode segmented selector — themed via CSS vars (4 themes auto-harmonize) */
+.modeSelect { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+.modeOpt {
+  padding: 3px 11px; border-radius: 999px;
+  border: 1px solid var(--border-2); background: transparent;
+  font-size: 11.5px; font-weight: 550; color: var(--text-2);
+  cursor: pointer; transition: background .12s, color .12s, border-color .12s;
+}
+.modeOpt:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.modeOptActive, .modeOptActive:hover {
+  background: var(--accent-soft); color: var(--accent); border-color: var(--accent);
+}
+.modeOpt:disabled { opacity: .4; cursor: not-allowed; }
+
 /* ── Right sidebar ──────────────────────────────────────────── */
 .rside {
   width: 288px; flex-shrink: 0; background: var(--sub);

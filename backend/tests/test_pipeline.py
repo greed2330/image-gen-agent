@@ -308,15 +308,120 @@ def test_build_workflow_img2img_uses_correct_template():
     assert "_comment" not in wf
 
 
+def test_build_workflow_ipadapter_template():
+    """IPADAPTER route: ipadapter.json, reference at node 10, KSampler fed by IPAdapter(13), EmptyLatent kept."""
+    from app.pipeline.orchestrator import _build_workflow
+    from app.models.schemas import CompiledPrompt, GenParams, Resolution
+
+    compiled = CompiledPrompt(positive=["1girl"], negative=[], model_profile=ModelProfile.ILLUSTRIOUS)
+    params = GenParams(
+        steps=28, cfg=5.0, sampler="euler_ancestral", scheduler="normal",
+        resolution=Resolution(width=832, height=1216), denoise=1.0,
+    )
+    route = RouteDecision(
+        workflow=WorkflowType.IPADAPTER,
+        checkpoint="wai.safetensors",
+        model_profile=ModelProfile.ILLUSTRIOUS,
+    )
+    wf = _build_workflow(compiled, params, route, seed=7, input_image="ref_xyz.png")
+
+    assert wf["10"]["inputs"]["image"] == "ref_xyz.png"        # reference loaded
+    assert wf["13"]["class_type"] == "IPAdapter"               # apply node present
+    assert wf["3"]["inputs"]["model"] == ["13", 0]             # KSampler uses patched model
+    assert wf["5"]["inputs"]["width"] == 832                   # EmptyLatentImage filled
+    assert "_comment" not in wf
+
+
+def test_build_workflow_controlnet_template():
+    """CONTROLNET route: controlnet.json, reference at node 10, openpose preprocessor, KSampler fed by ControlNetApply(17)."""
+    from app.pipeline.orchestrator import _build_workflow
+    from app.models.schemas import CompiledPrompt, GenParams, Resolution
+
+    compiled = CompiledPrompt(positive=["1girl"], negative=[], model_profile=ModelProfile.ILLUSTRIOUS)
+    params = GenParams(
+        steps=28, cfg=5.0, sampler="euler_ancestral", scheduler="normal",
+        resolution=Resolution(width=832, height=1216), denoise=1.0,
+    )
+    route = RouteDecision(
+        workflow=WorkflowType.CONTROLNET,
+        checkpoint="wai.safetensors",
+        model_profile=ModelProfile.ILLUSTRIOUS,
+    )
+    wf = _build_workflow(compiled, params, route, seed=7, input_image="pose_ref.png")
+
+    assert wf["10"]["inputs"]["image"] == "pose_ref.png"          # reference loaded
+    assert wf["14"]["class_type"] == "DWPreprocessor"             # openpose preprocessor (DWPose)
+    assert wf["16"]["inputs"]["type"] == "openpose"               # union type set
+    assert wf["3"]["inputs"]["positive"] == ["17", 0]             # KSampler uses controlnet conditioning
+    assert wf["5"]["inputs"]["width"] == 832
+    assert "_comment" not in wf
+
+
 @pytest.mark.asyncio
 async def test_workflow_router_img2img_when_reference_set():
-    """Intent with reference field → IMG2IMG workflow."""
+    """Intent with reference + default mode (vary) → IMG2IMG workflow."""
     from app.pipeline.workflow_router import WorkflowRouter
 
     router = WorkflowRouter()
     intent = Intent(identity_tags=["1girl"], reference="ref_abc.png")
     result = await router.route(intent)
     assert result.workflow == WorkflowType.IMG2IMG
+
+
+@pytest.mark.asyncio
+async def test_workflow_router_reference_mode_branches():
+    """reference_mode (UI-selected) picks the workflow when a reference is present."""
+    from app.pipeline.workflow_router import WorkflowRouter
+    from app.models.schemas import ReferenceMode
+
+    router = WorkflowRouter()
+    cases = {
+        ReferenceMode.CHARACTER: WorkflowType.IPADAPTER,
+        ReferenceMode.POSE: WorkflowType.CONTROLNET,
+        ReferenceMode.VARY: WorkflowType.IMG2IMG,
+    }
+    for mode, expected in cases.items():
+        intent = Intent(reference="ref.png", reference_mode=mode)
+        assert (await router.route(intent)).workflow == expected
+
+    # No reference → always txt2img, mode ignored
+    intent = Intent(reference_mode=ReferenceMode.CHARACTER)
+    assert (await router.route(intent)).workflow == WorkflowType.TXT2IMG
+
+
+@pytest.mark.asyncio
+async def test_workflow_router_regional_for_multichar():
+    """2+ character groups (no reference) → REGIONAL; single → TXT2IMG."""
+    from app.pipeline.workflow_router import WorkflowRouter
+
+    router = WorkflowRouter()
+    multi = Intent(characters=[["1girl", "blonde hair"], ["1girl", "black hair"]])
+    assert (await router.route(multi)).workflow == WorkflowType.REGIONAL
+
+    single = Intent(characters=[["1girl", "blonde hair"]])
+    assert (await router.route(single)).workflow == WorkflowType.TXT2IMG
+
+
+def test_build_regional_workflow_two_characters():
+    """Regional graph: per-character region text + areas, combine chain into KSampler.positive."""
+    from app.pipeline.orchestrator import _build_regional_workflow
+    from app.models.schemas import CompiledPrompt, GenParams, Resolution
+
+    compiled = CompiledPrompt(positive=["masterpiece", "2girls"], negative=["worst quality"], model_profile=ModelProfile.ILLUSTRIOUS)
+    params = GenParams(steps=28, cfg=5.0, sampler="euler_ancestral", scheduler="normal",
+                       resolution=Resolution(width=1024, height=1024), denoise=1.0)
+    route = RouteDecision(workflow=WorkflowType.REGIONAL, checkpoint="wai.safetensors", model_profile=ModelProfile.ILLUSTRIOUS)
+    chars = [["1girl", "blonde hair"], ["1girl", "black hair"]]
+
+    wf = _build_regional_workflow(compiled, params, route, seed=5, characters=chars)
+
+    assert wf["100"]["inputs"]["text"] == "1girl, blonde hair"   # region 0 prompt
+    assert wf["102"]["inputs"]["text"] == "1girl, black hair"    # region 1 prompt
+    assert wf["101"]["inputs"]["x"] == 0.0 and wf["101"]["inputs"]["width"] == 0.5   # left column
+    assert wf["103"]["inputs"]["x"] == 0.5                                           # right column
+    pos = wf["3"]["inputs"]["positive"]
+    assert wf[pos[0]]["class_type"] == "ConditioningCombine"     # KSampler positive = combined
+    assert wf["3"]["inputs"]["negative"] == ["7", 0]
 
 
 @pytest.mark.asyncio
