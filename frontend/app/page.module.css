@@ -297,10 +297,12 @@
 /* ── Settings ───────────────────────────────────────────────── */
 .setWrap { max-width: 680px; margin: 0 auto; padding: 32px 24px 60px; width: 100%; }
 .modelSelect {
-  background: var(--bg-1); color: var(--text-1); border: 1px solid var(--border-2);
+  background: var(--elev); color: var(--text); border: 1px solid var(--border-2);
   border-radius: 7px; padding: 4px 8px; font-size: 13px; cursor: pointer;
   max-width: 220px;
 }
+/* open dropdown list — without these, options fall back to OS white bg (white-on-white in dark) */
+.modelSelect option { background: var(--elev); color: var(--text); }
 .setTitle { font-size: 20px; font-weight: 650; letter-spacing: -.03em; margin-bottom: 4px; }
 .setSub { font-size: 13px; color: var(--text-2); margin-bottom: 28px; }
 .setLabel { font-size: 12px; color: var(--text-3); font-weight: 600; margin: 26px 0 10px; }
