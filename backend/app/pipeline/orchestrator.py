@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+import uuid
 from typing import TYPE_CHECKING
 
 from app.clients.comfyui_client import ComfyUIClient
@@ -14,6 +15,7 @@ from app.services.vram_manager import VramManager
 
 if TYPE_CHECKING:
     from app.services.chat_store import ChatStore
+    from app.services.progress_hub import ProgressHub
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +38,7 @@ class Orchestrator:
         vram_manager: VramManager,
         comfyui: ComfyUIClient,
         store: "ChatStore | None" = None,
+        progress_hub: "ProgressHub | None" = None,
     ) -> None:
         self._intent = intent_parser
         self._router = workflow_router
@@ -45,6 +48,16 @@ class Orchestrator:
         self._vram = vram_manager
         self._comfyui = comfyui
         self._store = store
+        self._progress_hub = progress_hub
+
+    async def _emit_progress(self, value: int, maximum: int) -> None:
+        """Relay one ComfyUI sampling-progress event to connected WS clients."""
+        if self._progress_hub is None:
+            return
+        pct = int(value / maximum * 100) if maximum else 0
+        await self._progress_hub.broadcast(
+            {"type": "progress", "value": value, "max": maximum, "pct": pct}
+        )
 
     async def run(
         self,
@@ -107,8 +120,8 @@ class Orchestrator:
         try:
             t = time.monotonic()
             workflow = _build_workflow(compiled, params, route, seed, input_image=input_image)
-            prompt_id = await self._comfyui.submit(workflow)
-            image_path = await self._comfyui.wait_result(prompt_id)
+            client_id = uuid.uuid4().hex
+            image_path = await self._comfyui.generate(workflow, client_id, self._emit_progress)
             trace.record("⑤ execute", {"workflow_keys": list(workflow.keys())}, {"image_path": image_path}, t)
         except Exception as exc:
             exec_error = exc

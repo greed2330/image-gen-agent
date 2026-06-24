@@ -32,6 +32,11 @@ export async function generateInChat(
   return res.json();
 }
 
+// Backend WebSocket that streams real generation progress (relays ComfyUI sampling events)
+export function progressWsUrl(): string {
+  return BASE.replace(/^http/, "ws") + "/ws/progress";
+}
+
 export function imageUrl(imagePath: string): string {
   const filename = imagePath.replace(/\\/g, "/").split("/").pop() ?? imagePath;
   return `${BASE}/images/${filename}`;
