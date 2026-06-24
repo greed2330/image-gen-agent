@@ -9,6 +9,7 @@ export async function generateInChat(
   message: string,
   history: Message[],
   referenceImage?: string,
+  referenceMode?: string,
 ): Promise<GenResult> {
   const body: Record<string, unknown> = {
     message,
@@ -19,6 +20,7 @@ export async function generateInChat(
   };
   if (referenceImage) {
     body.reference_image = referenceImage.replace(/^data:[^;]+;base64,/, "");
+    if (referenceMode) body.reference_mode = referenceMode;
   }
   const res = await fetch(`${BASE}/chats/${chatId}/generate`, {
     method: "POST",
