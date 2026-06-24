@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # Reduces refusal rate on suggestive inputs (doc 07 §1-A, Principle 1).
 # /no_think disables qwen3 thinking mode for direct structured output.
 _SYSTEM_PROMPT = """/no_think
-You extract image generation intent from Korean messages and output JSON with two tag arrays.
+You extract image generation intent from Korean messages and output JSON with tag arrays (identity / scene / exclude).
 Carry over established character identity (species, colors, permanent features) into identity_tags across turns.
 
 Korean-to-danbooru tag translation examples:
@@ -40,6 +40,12 @@ Output: {"subjects":["1boy"],"style":"anime","setting":null,"mood":null,"nsfw_le
 Input: "하얀 머리에 옆머리만 빨간색으로 브릿지 염색한 소녀"
 Output: {"subjects":["1girl"],"style":"anime","setting":null,"mood":null,"nsfw_level":0,"identity_tags":["1girl","solo","white hair","red hair","multicolored hair","streaked hair"],"scene_tags":[],"workflow_hint":null}
 
+Input: "안경 안 쓴 갈색 단발 소녀"
+Output: {"subjects":["1girl"],"style":"anime","setting":null,"mood":null,"nsfw_level":0,"identity_tags":["1girl","solo","brown hair","short hair"],"scene_tags":[],"exclude_tags":["glasses"],"workflow_hint":null}
+
+Input: "맨발의 소녀, 신발이랑 양말은 신지 말고"
+Output: {"subjects":["1girl"],"style":"anime","setting":null,"mood":null,"nsfw_level":0,"identity_tags":["1girl","solo"],"scene_tags":["barefoot"],"exclude_tags":["shoes","socks"],"workflow_hint":null}
+
 Input: "스포츠 브라랑 스패츠 입은 17세 소녀"
 Output: {"subjects":["1girl"],"style":"anime","setting":null,"mood":null,"nsfw_level":1,"identity_tags":["1girl","solo","teen"],"scene_tags":["sports bra","spats","midriff","bare midriff","athletic wear"],"workflow_hint":null}
 
@@ -52,6 +58,7 @@ Output: {"subjects":["1boy","1girl"],"style":"anime","setting":"school","mood":n
 Rules:
 - identity_tags: 4-10 tags. species, fur/body color, hair color, eye color, age, permanent features, AND clothing the character "always wears". Protected from TIPO expansion.
 - scene_tags: 0-8 tags. pose, action, expression, THIS-request clothing, background, mood. TIPO expands these.
+- exclude_tags: 0-6 tags, default []. Things the user explicitly does NOT want ("X 없이", "X 안 한/안 쓴", "X 빼고/말고", "맨발"=no shoes/socks). Put the danbooru tag of the EXCLUDED item here, NEVER in identity/scene. These are forced into the negative prompt.
 - Clothing defaults to scene_tags; promote to identity_tags only if the user defines it as permanent ("always wears").
 - kemonomimi (수인/반수인): use "animal ears", "{species} ears", "{species} tail", "kemonomimi" — NEVER use the animal name alone
 - For colored-fur kemonomimi (백호, 흑표 etc.): always include BOTH hair color AND fur/body color (e.g. "white hair", "white fur", "white body")
@@ -154,10 +161,11 @@ class IntentParser:
             workflow_hint=wf,
             identity_tags=identity_tags,
             scene_tags=scene_tags,
+            exclude_tags=data.get("exclude_tags", []),
         )
         logger.info(
-            "intent: nsfw=%s identity=%s scene=%s",
-            intent.nsfw_level, intent.identity_tags, intent.scene_tags,
+            "intent: nsfw=%s identity=%s scene=%s exclude=%s",
+            intent.nsfw_level, intent.identity_tags, intent.scene_tags, intent.exclude_tags,
         )
 
         # Merge identity into room's character card (accumulates across turns)

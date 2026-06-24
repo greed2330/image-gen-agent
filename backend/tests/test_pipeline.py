@@ -226,6 +226,45 @@ async def test_prompt_compiler_protects_identity_from_tipo_conflicts():
     assert "midriff" in result.positive
 
 
+@pytest.mark.asyncio
+async def test_prompt_compiler_excludes_user_negated_tags():
+    """exclude_tags go to negative; TIPO re-injecting them is stripped from positive."""
+    from app.pipeline.prompt_compiler import PromptCompiler
+    from app.services.tag_allowlist import TagAllowlist
+
+    tipo_mock = AsyncMock()
+    tipo_mock.expand_tags.return_value = [
+        "barefoot", "standing",      # wanted scene extras → positive
+        "shoes", "socks", "loafers", # TIPO re-injected excluded items → must be dropped
+    ]
+
+    compiler = PromptCompiler(ollama=AsyncMock(), tipo=tipo_mock, allowlist=TagAllowlist())
+    compiler.load_presets()
+
+    intent = Intent(
+        identity_tags=["1girl", "solo"],
+        scene_tags=["barefoot"],
+        exclude_tags=["shoes", "socks"],
+        nsfw_level=NsfwLevel.SAFE,
+    )
+    route = RouteDecision(
+        workflow=WorkflowType.TXT2IMG,
+        checkpoint="wai.safetensors",
+        model_profile=ModelProfile.ILLUSTRIOUS,
+    )
+    result = await compiler.compile(intent, route)
+
+    # Excluded tags must not appear in positive even if TIPO re-injected them
+    assert not any("shoes" in t for t in result.positive)
+    assert not any("socks" in t for t in result.positive)
+    # Excluded tags forced into negative
+    negative_flat = " ".join(result.negative)
+    assert "shoes" in negative_flat
+    assert "socks" in negative_flat
+    # Wanted scene tag survives
+    assert "barefoot" in result.positive
+
+
 def test_build_workflow_seed_is_injected():
     """Seed passed as argument must appear in workflow node 3."""
     from app.pipeline.orchestrator import _build_workflow
