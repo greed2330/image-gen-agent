@@ -9,15 +9,17 @@ generated/
 *.webp
 
 # === 모델 파일 (대용량) ===
+# NOTE: 파일은 확장자로 제외됨. 디렉터리 패턴은 루트 앵커(/) 필수 —
+# 앵커 없는 `models/`는 소스 `backend/app/models/`까지 잡는 버그를 냈음.
 *.safetensors
 *.ckpt
 *.pt
 *.pth
 *.gguf
 *.bin
-models/
-checkpoints/
-loras/
+/models/
+/checkpoints/
+/loras/
 
 # === 비밀/환경 ===
 .env

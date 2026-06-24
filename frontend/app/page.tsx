@@ -5,6 +5,7 @@ import type { Theme, Room, Message } from "../lib/types";
 import {
   generateInChat,
   imageUrl,
+  progressWsUrl,
   downloadImage,
   listChats,
   createChat,
@@ -29,15 +30,6 @@ function uid() {
   return Math.random().toString(36).slice(2);
 }
 
-const PROGRESS_STAGES = [
-  { p: 8, t: "LLM 언로드 · VRAM 반납" },
-  { p: 24, t: "ComfyUI 그래프 제출" },
-  { p: 42, t: "체크포인트 로드" },
-  { p: 62, t: "샘플링 중 …" },
-  { p: 84, t: "샘플링 마무리" },
-  { p: 95, t: "VAE 디코딩" },
-];
-
 // ── GenCard ───────────────────────────────────────────────────────────────────
 function GenCard({
   msg,
@@ -47,37 +39,37 @@ function GenCard({
   onLightbox: (path: string, params: Message["params"]) => void;
 }) {
   const [progress, setProgress] = useState(0);
-  const [label, setLabel] = useState("대기 중");
+  const [label, setLabel] = useState("준비 중 …");
   const [flipped, setFlipped] = useState(false);
-  const startedRef = useRef(false);
 
+  // Real progress: subscribe to the backend WS while this card is generating.
+  // ComfyUI emits no events during LLM-unload / checkpoint-load, so the bar sits
+  // at 0% ("준비 중") until sampling starts, then tracks actual value/max.
   useEffect(() => {
-    // Run reveal animation once when generating card first appears (imagePath may already be set)
-    if (!msg.generating || startedRef.current) return;
-    startedRef.current = true;
-
-    // If result is already available, fast reveal (200ms/stage); else simulate (650ms/stage)
-    const fast = !!msg.imagePath;
-    const delay = fast ? 180 : 650;
-    let i = 0;
-
-    const tick = () => {
-      if (i >= PROGRESS_STAGES.length) {
-        if (msg.imagePath) {
-          setProgress(100);
-          setLabel("완료");
-          setTimeout(() => setFlipped(true), 250);
+    if (!msg.generating) return;
+    const ws = new WebSocket(progressWsUrl());
+    ws.onmessage = e => {
+      try {
+        const d = JSON.parse(e.data);
+        if (d.type === "progress" && typeof d.pct === "number") {
+          setProgress(d.pct);
+          setLabel(d.pct >= 99 ? "VAE 디코딩" : "샘플링 중 …");
         }
-        return;
+      } catch {
+        // ignore non-JSON frames
       }
-      const st = PROGRESS_STAGES[i++];
-      setProgress(st.p);
-      setLabel(st.t);
-      setTimeout(tick, delay);
     };
-    setTimeout(tick, fast ? 80 : 250);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => ws.close();
   }, [msg.generating]);
+
+  // Reveal: once the image arrives, fill the bar and flip to the result.
+  useEffect(() => {
+    if (!msg.imagePath) return;
+    setProgress(100);
+    setLabel("완료");
+    const t = setTimeout(() => setFlipped(true), 250);
+    return () => clearTimeout(t);
+  }, [msg.imagePath]);
 
   const res = msg.params?.resolution;
   const wStr = res ? `${res.width}×${res.height}` : "832×1216";
